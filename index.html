@@ -227,12 +227,12 @@ aside#drawer{width:var(--dw);padding:0;display:flex;flex-direction:column;overfl
 .setr.col{flex-direction:column;align-items:stretch}.setr.col label{flex:none}.setr .prep{width:100%}
 /* ===== resizable menu (v24.38, applied 26 Oct 2026) ===== */
 aside#drawer{position:sticky}body.nav-ov aside#drawer{position:fixed}
-.drs{position:absolute;top:0;bottom:0;right:0;width:14px;cursor:col-resize;touch-action:none;z-index:6;display:none;align-items:center;justify-content:center;user-select:none}
+.drs{position:fixed;width:14px;cursor:col-resize;touch-action:none;z-index:46;display:none;align-items:center;justify-content:center;user-select:none}
 body.nav-push .drs,body.nav-ov .drs{display:flex}
 @media (max-width:899px){.drs{display:none!important}}
-.drs::before{content:"";position:absolute;top:0;bottom:0;right:0;width:3px;background:transparent;transition:background .15s}
+.drs::before{content:"";position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);width:3px;border-radius:2px;background:transparent;transition:background .15s}
 .drs:hover::before,body.nav-rs .drs::before{background:var(--brand2)}
-.drg{position:relative;width:12px;height:46px;border:1px solid var(--bd);border-radius:7px;background:var(--sf);color:var(--mu);display:flex;align-items:center;justify-content:center;margin-right:1px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.drg{position:relative;width:12px;height:46px;border:1px solid var(--bd);border-radius:7px;background:var(--sf);color:var(--mu);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .drs:hover .drg,body.nav-rs .drg{color:#fff;background:var(--brand2);border-color:var(--brand2)}
 .drg svg{width:10px;height:26px;display:block}
 body.nav-rs,body.nav-rs *{cursor:col-resize!important;user-select:none!important}
@@ -1788,7 +1788,14 @@ function applyNav(){if(!NAVW)return;navSetW(S.nav.w||340);
  if(push){dr.removeAttribute("role");dr.removeAttribute("aria-modal")}else{dr.setAttribute("role","dialog");dr.setAttribute("aria-modal",String(navOpen))}
  GRPS.forEach(g=>{const o=!!S.og[g];$("#"+g).hidden=!o;$("#gh-"+g).setAttribute("aria-expanded",String(o))});
  ["r","e"].forEach(k=>["add","io","dep"].forEach(v=>{const on=S.sub[k]===v,tb=$("#st-"+k+"-"+v),pn=$("#sp-"+k+"-"+v);if(tb)tb.setAttribute("aria-selected",String(on));if(pn)pn.hidden=!on}));
- applyTheme()}
+ applyTheme();trackDrs()}
+function placeDrs(){const h=$("#drs"),dr=$("#drawer");if(!h||!dr)return;
+ const r=dr.getBoundingClientRect();if(!r.width)return;
+ const gap=12,w=14,cx=isPush()?r.right+gap/2:r.right;
+ h.style.left=(cx-w/2)+"px";h.style.top=r.top+"px";h.style.height=r.height+"px"}
+var _drsRAF=0,_drsUntil=0;
+function _drsTick(now){placeDrs();if(now<_drsUntil)_drsRAF=requestAnimationFrame(_drsTick);else _drsRAF=0}
+function trackDrs(ms){_drsUntil=performance.now()+(ms||450);if(!_drsRAF)_drsRAF=requestAnimationFrame(_drsTick)}
 function navFocusables(){return [$("#navbtn"),...$("#drawer").querySelectorAll('button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])')].filter(el=>!el.disabled&&!el.hidden&&el.offsetParent!==null)}
 function openDrawer(g){const was=drawerShown();if(!was||g)S.og={};if(g&&GRPS.includes(g))S.og[g]=1;if(isPush())S.nav.col=false;else navOpen=true;applyNav();save();
  requestAnimationFrame(()=>{const h=g&&$("#gh-"+g);if(h){h.scrollIntoView({block:"nearest"});if(!isPush())h.focus({preventScroll:true})}else if(!isPush()){const f=$("#drawer").querySelector(".gh");if(f)f.focus({preventScroll:true})}})}
@@ -1801,11 +1808,11 @@ $("#dpin").onclick=()=>{const p=!isPush();S.nav.pin=p;if(p)S.nav.col=false;navOp
  const refit=()=>{if(!isPush()||typeof zFit!=="function")return;try{zFit(false)}catch(e){}};
  const frame=()=>{raf=0;refit()};
  h.addEventListener("pointerdown",e=>{if(e.button!==undefined&&e.button!==0)return;e.preventDefault();on=true;sx=e.clientX;sw=$("#drawer").getBoundingClientRect().width;try{h.setPointerCapture(e.pointerId)}catch(x){}document.body.classList.add("nav-rs")});
- h.addEventListener("pointermove",e=>{if(!on)return;const w=navSetW(sw+(e.clientX-sx));S.nav.w=w>340?w:0;if(!raf)raf=requestAnimationFrame(frame)});
+ h.addEventListener("pointermove",e=>{if(!on)return;const w=navSetW(sw+(e.clientX-sx));S.nav.w=w>340?w:0;placeDrs();if(!raf)raf=requestAnimationFrame(frame)});
  const end=()=>{if(!on)return;on=false;document.body.classList.remove("nav-rs");if(raf){cancelAnimationFrame(raf);raf=0}refit();save()};
  h.addEventListener("pointerup",end);h.addEventListener("pointercancel",end);h.addEventListener("lostpointercapture",end);
- h.addEventListener("dblclick",()=>{S.nav.w=0;navSetW(340);requestAnimationFrame(()=>{refit();save()})});
- addEventListener("resize",()=>{if(S.nav.w){const w=navSetW(S.nav.w);if(w!==S.nav.w){S.nav.w=w>340?w:0}}})})();
+ h.addEventListener("dblclick",()=>{S.nav.w=0;navSetW(340);trackDrs();requestAnimationFrame(()=>{refit();save()})});
+ addEventListener("resize",()=>{if(S.nav.w){const w=navSetW(S.nav.w);if(w!==S.nav.w){S.nav.w=w>340?w:0}}placeDrs()})})();
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target;if(!t)return;
  const sb=t.closest("[data-sub]");if(sb){const [k,v]=sb.dataset.sub.split("|");S.sub[k]=v;applyNav();save();return}
  const gb=t.closest("[data-grp]");if(gb){const g=gb.dataset.grp;S.og[g]=!S.og[g];applyNav();save();return}
