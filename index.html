@@ -810,12 +810,10 @@ body::before{display:none!important}
 .an{cursor:default}.an:active{cursor:default}
 /* square cards */
 #tree .card,#tree .card.root{width:150px;height:150px;padding:0;display:flex;flex-direction:column;overflow:hidden}
-#tree .card .ctop,#tree .card.root .ctop{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:14px 8px 7px;border-bottom:2px solid #2a7130}
-#tree .card .ctop .hx{width:46px;height:46px;margin-bottom:4px}
-#tree .card .ctop .hxi{font-size:14px}
+#tree .card .ctop,#tree .card.root .ctop{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 8px 7px;border-bottom:2px solid #2a7130}
 #tree .card .nm,#tree .card .rl{display:block;width:100%;text-align:center;padding:1px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#tree .card .nm{font-size:13px}
-#tree .card .rl{font-size:11px}
+#tree .card .nm{font-size:15px}
+#tree .card .rl{font-size:12.5px}
 #tree .card .cctl{top:6px;left:6px;right:6px;justify-content:space-between;pointer-events:none}
 #tree .card .cctl>*{pointer-events:auto}
 #tree .card .cctl .info{margin-left:auto}
@@ -833,14 +831,13 @@ body::before{display:none!important}
 .addemp #eid::placeholder{color:var(--mu)}
 /* ===== v24.34: rectangle cards in horizontal view, set-department tools, group icon ===== */
 #tree.orh .card,#tree.orh .card.root{width:250px;height:84px}
-#tree.orh .card .ctop,#tree.orh .card.root .ctop{display:grid;grid-template-columns:42px minmax(0,1fr);grid-template-rows:auto auto;align-content:center;justify-items:start;column-gap:10px;row-gap:1px;padding:8px 10px 6px}
-#tree.orh .card .ctop .hx{grid-row:1/3;width:42px;height:42px;margin:0}
+#tree.orh .card .ctop,#tree.orh .card.root .ctop{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;align-content:center;justify-items:start;row-gap:1px;padding:8px 10px 6px}
 #tree.orh .card .nm,#tree.orh .card .rl{text-align:left;padding-right:4px}
 #tree.orh .card .nm{padding-right:28px}
 #tree.orh .card:has(.colb) .nm{padding-right:52px}
 #tree.orh .card .cctl{left:auto;right:6px;justify-content:flex-end;gap:3px}
 #tree.orh .card .cctl .info{margin-left:0}
-#tree.orh .card .cdep{height:22px;justify-content:flex-start;padding-left:62px}
+#tree.orh .card .cdep{height:22px;justify-content:flex-start;padding-left:10px}
 #vp.lod #tree.orh .card .nm{padding-right:4px}
 .subtabs button{font-size:12px;gap:5px;padding:9px 4px;line-height:1.15}
 .subtabs button span{white-space:normal;text-align:left}
@@ -1033,9 +1030,9 @@ const LVORD=["a","i","b","e"];
 function lvMix(m){const c={e:0,b:0,i:0,a:0,n:0};(m.a||[]).forEach(x=>{c[LK.includes(x.lv)?x.lv:"n"]++});return c}
 function lvBar(c,tot){return tot?["e","b","i","a","n"].filter(k=>c[k]).map(k=>`<i class="l-${k}" style="flex:${c[k]}" title="${k==="n"?"No level":LV[k].n}: ${c[k]}"></i>`).join(""):'<i class="l-0"></i>'}
 const initials=n=>String(n||"?").trim().split(/\s+/).slice(0,2).map(w=>w.charAt(0)).join("").toUpperCase()||"?";
-function card(m){const ph=(m.info||{}).photo,av=`<div class="hx${m.g?" hx-"+m.g:""}"><div class="hxi">${ph?`<img src="${ph}" alt="">`:`<span>${esc(initials(m.name))}</span>`}</div></div>`,dp=m.dep||"";
+function card(m){const dp=m.dep||"";
  return `<div class="card ${m.mgr?"root":""} ${m.g?"g-"+m.g:""}" data-id="${m.id}"><div class="cctl">${kids(m.id).length?`<button class="colb" data-col="${m.id}" title="${S.col&&S.col[m.id]?"Show":"Hide"} team (${desc(m.id).length})" aria-expanded="${!(S.col&&S.col[m.id])}">${S.col&&S.col[m.id]?"+"+desc(m.id).length:"▾"}</button>`:""}<button class="info" data-act="info" data-pid="${m.id}" title="Employee information (hover or tap)">!</button></div>
- <div class="ctop">${av}<input class="nm" data-pid="${m.id}" data-f="name" value="${esc(m.name)}" aria-label="Name" title="${esc(m.name)}"><input class="rl tpf" data-f="role" data-tp readonly value="${esc(m.role)}" placeholder="Job title" aria-label="Job title" title="${esc(m.role||"")}"></div><div class="cdep">${m.mgr?'<span class="mchip">Manager</span>':""}<span class="dpl${dp?"":" none"}" title="Department">${dp?esc(dp):"No department"}</span></div></div>`}
+ <div class="ctop"><input class="nm" data-pid="${m.id}" data-f="name" value="${esc(m.name)}" aria-label="Name" title="${esc(m.name)}"><input class="rl tpf" data-f="role" data-tp readonly value="${esc(m.role)}" placeholder="Job title" aria-label="Job title" title="${esc(m.role||"")}"></div><div class="cdep">${m.mgr?'<span class="mchip">Manager</span>':""}<span class="dpl${dp?"":" none"}" title="Department">${dp?esc(dp):"No department"}</span></div></div>`}
 function node(id){
  const m=S.members.find(x=>x.id===id),k=kids(id),cl=S.col&&S.col[id],stack=!S.orh&&S.cmp!==false&&k.length>4&&k.every(c=>!kids(c.id).length);
  return `<li${S.hl===id?' class="zhl"':""}>${card(m)}${k.length&&!cl?`<ul${stack?' class="vst"':""}>${k.map(c=>node(c.id)).join("")}</ul>`:""}</li>`}
