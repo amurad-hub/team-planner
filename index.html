@@ -812,6 +812,7 @@ body::before{display:none!important}
 #tree .card,#tree .card.root{width:150px;height:104px;padding:0;display:flex;flex-direction:column;overflow:hidden}
 #tree .card .ctop,#tree .card.root .ctop{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 8px 7px;border-bottom:2px solid #2a7130}
 #tree .card .nm,#tree .card .rl{display:block;width:100%;text-align:center;padding:1px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tree:not(.orh) .card .nm{padding-left:28px;padding-right:28px}
 #tree .card .nm{font-size:15px}
 #tree .card .rl{font-size:12.5px}
 #tree .card .cctl{top:6px;left:6px;right:6px;justify-content:space-between;pointer-events:none}
@@ -1030,6 +1031,14 @@ const LVORD=["a","i","b","e"];
 function lvMix(m){const c={e:0,b:0,i:0,a:0,n:0};(m.a||[]).forEach(x=>{c[LK.includes(x.lv)?x.lv:"n"]++});return c}
 function lvBar(c,tot){return tot?["e","b","i","a","n"].filter(k=>c[k]).map(k=>`<i class="l-${k}" style="flex:${c[k]}" title="${k==="n"?"No level":LV[k].n}: ${c[k]}"></i>`).join(""):'<i class="l-0"></i>'}
 const initials=n=>String(n||"?").trim().split(/\s+/).slice(0,2).map(w=>w.charAt(0)).join("").toUpperCase()||"?";
+function fitOneName(inp){if(!inp)return;inp.style.fontSize="";const cs=getComputedStyle(inp),pad=parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight),avail=inp.clientWidth-pad-2;if(avail<=0)return;
+ const cv=fitOneName._cv||(fitOneName._cv=document.createElement("canvas")),ctx=cv.getContext("2d");
+ let fs=parseFloat(cs.fontSize);const MIN=9,txt=inp.value||inp.placeholder||"";
+ ctx.font=`${cs.fontWeight} ${fs}px ${cs.fontFamily}`;
+ while(fs>MIN&&ctx.measureText(txt).width>avail){fs-=.5;ctx.font=`${cs.fontWeight} ${fs}px ${cs.fontFamily}`}
+ if(fs<parseFloat(cs.fontSize))inp.style.fontSize=fs+"px"}
+function fitNames(){$("#tree").querySelectorAll(".card .nm").forEach(fitOneName)}
+document.addEventListener("input",e=>{if(e.target.classList&&e.target.classList.contains("nm")&&e.target.closest("#tree"))fitOneName(e.target)});
 function card(m){const dp=m.dep||"";
  return `<div class="card ${m.mgr?"root":""} ${m.g?"g-"+m.g:""}" data-id="${m.id}"><div class="cctl">${kids(m.id).length?`<button class="colb" data-col="${m.id}" title="${S.col&&S.col[m.id]?"Show":"Hide"} team (${desc(m.id).length})" aria-expanded="${!(S.col&&S.col[m.id])}">${S.col&&S.col[m.id]?"+"+desc(m.id).length:"▾"}</button>`:""}<button class="info" data-act="info" data-pid="${m.id}" title="Employee information (hover or tap)">!</button></div>
  <div class="ctop"><input class="nm" data-pid="${m.id}" data-f="name" value="${esc(m.name)}" aria-label="Name" title="${esc(m.name)}"><input class="rl tpf" data-f="role" data-tp readonly value="${esc(m.role)}" placeholder="Job title" aria-label="Job title" title="${esc(m.role||"")}"></div><div class="cdep">${m.mgr?'<span class="mchip">Manager</span>':""}<span class="dpl${dp?"":" none"}" title="Department">${dp?esc(dp):"No department"}</span></div></div>`}
@@ -1051,6 +1060,7 @@ $("#lvsel").innerHTML=LK.map(k=>`<button class="${k}${S.bl===k?" on":""}" data-b
  $("#prep").value=S.prep;
  $("#rcnt").textContent="("+ns+" of "+S.resp.length+" selected)";$("#ecnt").textContent="("+ne+" of "+emps().length+" selected)";
  applyNav();if(window.cmarkUpdate)requestAnimationFrame(cmarkUpdate);kfSet(_kf);{const zc=$("#zcmp");if(zc){zc.setAttribute("aria-pressed",String(S.cmp!==false));zc.hidden=!!S.orh}$("#tree").classList.toggle("orh",!!S.orh);const zv=$("#zov"),zh=$("#zoh");if(zv&&zh){zv.setAttribute("aria-pressed",String(!S.orh));zh.setAttribute("aria-pressed",String(!!S.orh))}}
+ requestAnimationFrame(fitNames);
  save();
 }
 $("#legend").innerHTML=`<div class="lh">Responsibility levels</div>`+LK.map(k=>`<div><span class="chip l-${k}" style="cursor:default"><b>${LV[k].s}</b>${LV[k].n}</span><div class="ld">${LV[k].d}</div></div>`).join("")+`<div class="lh">Gender colors</div><div><span class="gsw g-f">Female · pink ring</span> <span class="gsw g-m">Male · blue ring</span></div>`;
@@ -2122,7 +2132,8 @@ async function xlFull(){xlOK();
  await xlSave(wb,"team-report.xlsx");return wb.worksheets.length}
 /* ===== zoom & pan view (draft) ===== */
 (function(){const vp=$("#vp"),st=$("#tree");let V={k:1,x:0,y:0},anim=false;const MIN=.2,MAX=2;
- const apply=()=>{st.style.transition=anim?"transform .28s cubic-bezier(.22,1,.36,1)":"none";st.style.transform=`translate(${V.x}px,${V.y}px) scale(${V.k})`;$("#zpct").textContent=Math.round(V.k*100)+"%";vp.classList.toggle("lod",V.k<.6);anim=false;if(window.cmarkUpdate)setTimeout(cmarkUpdate,anim?300:0)};
+ let lodPrev=null;
+ const apply=()=>{st.style.transition=anim?"transform .28s cubic-bezier(.22,1,.36,1)":"none";st.style.transform=`translate(${V.x}px,${V.y}px) scale(${V.k})`;$("#zpct").textContent=Math.round(V.k*100)+"%";const lod=V.k<.6;vp.classList.toggle("lod",lod);if(lod!==lodPrev){lodPrev=lod;if(window.fitNames)requestAnimationFrame(fitNames)}anim=false;if(window.cmarkUpdate)setTimeout(cmarkUpdate,anim?300:0)};
  const store=()=>{S.view={k:V.k,x:V.x,y:V.y};save()};let stT;const later=()=>{clearTimeout(stT);stT=setTimeout(store,400)};
  const zoomAt=(k,cx,cy)=>{k=Math.max(MIN,Math.min(MAX,k));const r=vp.getBoundingClientRect(),px=cx-r.left,py=cy-r.top;V.x=px-(px-V.x)*k/V.k;V.y=py-(py-V.y)*k/V.k;V.k=k;apply();later()};
  const size=()=>({w:st.scrollWidth||st.offsetWidth,h:st.scrollHeight||st.offsetHeight});
