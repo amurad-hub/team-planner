@@ -853,6 +853,12 @@ body::before{display:none!important}
 .sdp .btn.p{width:100%}
 .ri .rgi{flex:none;width:26px;height:24px;padding:0;border:1px solid transparent;border-radius:6px;color:transparent;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237d8899' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 7A1.5 1.5 0 0 1 5 5.5h4l2 2h8A1.5 1.5 0 0 1 20.5 9v8.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z'/%3E%3Cpath d='M10 13h6M14 11l2 2-2 2'/%3E%3C/svg%3E") center/16px no-repeat!important;cursor:pointer}
 .ri .rgi:hover,.ri .rgi:focus{border-color:var(--bd);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232a7130' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 7A1.5 1.5 0 0 1 5 5.5h4l2 2h8A1.5 1.5 0 0 1 20.5 9v8.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z'/%3E%3Cpath d='M10 13h6M14 11l2 2-2 2'/%3E%3C/svg%3E")!important;outline:none}
+/* ===== public read-only build (GitHub Pages): browsing/zooming/viewing stays on; every add/edit/delete/import tool is removed ===== */
+html.viewonly [data-wiz],html.viewonly .grp[data-g="s2"],html.viewonly .grp[data-g="s4"],html.viewonly #s1 .subbox,html.viewonly #s3 .subbox,html.viewonly .mtg{display:none!important}
+html.viewonly button[disabled]:not(.ddb){display:none!important}
+html.viewonly .ddb[disabled]{pointer-events:none;cursor:default}
+html.viewonly select[disabled],html.viewonly input[disabled],html.viewonly input[readonly],html.viewonly textarea[readonly]{cursor:default;background-image:none;opacity:.85}
+html.viewonly #tree .card .nm[readonly]{cursor:default}
 </style></head><body><canvas id="pbg" aria-hidden="true"></canvas>
 <header id="hdr">
 <button class="hbtn" id="navbtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="drawer" title="Menu"><span class="hbi"><i></i><i></i><i></i></span></button>
@@ -984,6 +990,12 @@ const DEF=()=>[
 ].map((x,i)=>({id:'d'+i,name:x[0],desc:x[1]}));
 /* Exported copy (claude.ai → Export → HTML) starts fully blank */
 const XP=location.protocol==="file:"||!/claude|anthropic/i.test(location.hostname||"");
+/* Public read-only build: the published GitHub Pages link stays fully browsable (pan/zoom/search/collapse/view details)
+   but every control that adds, edits, deletes or imports data is disabled. Editing continues only in the private
+   Claude artifact. */
+const VIEWONLY=/github\.io/i.test(location.hostname||"");
+if(VIEWONLY)document.documentElement.classList.add("viewonly");
+const RO=VIEWONLY?" disabled":"";
 function fresh(){
  if(XP)return{title:"Team Structure",prep:"",resp:[],exp:{},sel:{},open:{},members:[{id:"mgr",name:"",role:"",parent:null,mgr:true,a:[],info:{},g:""}]};
  return{title:"Team Structure",resp:DEF(),exp:{},sel:{},open:{},
@@ -1030,7 +1042,7 @@ const rname=id=>(Rr(id)||{}).name||"?";
 const owners=rid=>S.members.filter(m=>(m.a||[]).some(x=>x.r===rid));
 const lvOpts=cur=>(cur?"":`<option value="" selected>Set level…</option>`)+LK.map(k=>`<option value="${k}" ${cur===k?"selected":""}>${LV[k].n}</option>`).join("");
 function arow(m,x){const r=Rr(x.r),k=x.lv||"n";
- return `<div class="ar l-${k}" data-chip="${m.id}|${x.r}"><span class="an" title="${esc(r.name)}">${esc(r.name)}</span><select class="ls" data-act="alv" data-r="${x.r}" title="Level">${lvOpts(x.lv)}</select><i data-act="unassign" title="Remove from this person">×</i></div>`}
+ return `<div class="ar l-${k}" data-chip="${m.id}|${x.r}"><span class="an" title="${esc(r.name)}">${esc(r.name)}</span><select class="ls" data-act="alv" data-r="${x.r}" title="Level"${RO}>${lvOpts(x.lv)}</select>${VIEWONLY?"":`<i data-act="unassign" title="Remove from this person">×</i>`}</div>`}
 const LVORD=["a","i","b","e"];
 function lvMix(m){const c={e:0,b:0,i:0,a:0,n:0};(m.a||[]).forEach(x=>{c[LK.includes(x.lv)?x.lv:"n"]++});return c}
 function lvBar(c,tot){return tot?["e","b","i","a","n"].filter(k=>c[k]).map(k=>`<i class="l-${k}" style="flex:${c[k]}" title="${k==="n"?"No level":LV[k].n}: ${c[k]}"></i>`).join(""):'<i class="l-0"></i>'}
@@ -1045,7 +1057,7 @@ function fitNames(){$("#tree").querySelectorAll(".card .nm").forEach(fitOneName)
 document.addEventListener("input",e=>{if(e.target.classList&&e.target.classList.contains("nm")&&e.target.closest("#tree"))fitOneName(e.target)});
 function card(m){const dp=m.dep||"";
  return `<div class="card ${m.mgr?"root":""} ${m.g?"g-"+m.g:""}" data-id="${m.id}"><div class="cctl">${kids(m.id).length?`<button class="colb" data-col="${m.id}" title="${S.col&&S.col[m.id]?"Show":"Hide"} team (${desc(m.id).length})" aria-expanded="${!(S.col&&S.col[m.id])}">${S.col&&S.col[m.id]?"+"+desc(m.id).length:"▾"}</button>`:""}<button class="info" data-act="info" data-pid="${m.id}" title="Employee information (hover or tap)">!</button></div>
- <div class="ctop"><input class="nm" data-pid="${m.id}" data-f="name" value="${esc(m.name)}" aria-label="Name" title="${esc(m.name)}"><input class="rl tpf" data-f="role" data-tp readonly value="${esc(m.role)}" placeholder="Job title" aria-label="Job title" title="${esc(m.role||"")}"></div><div class="cdep">${m.mgr?'<span class="mchip">Manager</span>':""}<span class="dpl${dp?"":" none"}" title="Department">${dp?esc(dp):"No department"}</span></div></div>`}
+ <div class="ctop"><input class="nm" data-pid="${m.id}" data-f="name" value="${esc(m.name)}" aria-label="Name" title="${esc(m.name)}"${VIEWONLY?" readonly":""}><input class="rl tpf" data-f="role" data-tp readonly${RO} value="${esc(m.role)}" placeholder="Job title" aria-label="Job title" title="${esc(m.role||"")}"></div><div class="cdep">${m.mgr?'<span class="mchip">Manager</span>':""}<span class="dpl${dp?"":" none"}" title="Department">${dp?esc(dp):"No department"}</span></div></div>`}
 function node(id){
  const m=S.members.find(x=>x.id===id),k=kids(id),cl=S.col&&S.col[id],stack=!S.orh&&S.cmp!==false&&k.length>4&&k.every(c=>!kids(c.id).length);
  return `<li${S.hl===id?' class="zhl"':""}>${card(m)}${k.length&&!cl?`<ul${stack?' class="vst"':""}>${k.map(c=>node(c.id)).join("")}</ul>`:""}</li>`}
@@ -1072,6 +1084,7 @@ $("#legend").innerHTML=`<div class="lh">Responsibility levels</div>`+LK.map(k=>`
 const q=(e,s)=>e.target.closest(s);
 document.addEventListener("change",e=>{
  const t=e.target,c=t.closest(".card"),id=c&&c.dataset.id,m=id&&S.members.find(x=>x.id===id);
+ if(VIEWONLY){const safe=t.dataset.esel!==undefined||t.dataset.pr!==undefined||t.dataset.pe!==undefined||t.dataset.sel!==undefined||t.dataset.cal!==undefined||t.id==="selall";if(!safe)return}
  if(t.dataset.mgr){const mm=S.members.find(x=>x.id===t.dataset.mgr);if(mm)mm.mgr=t.checked}
  else if(t.dataset.f==="name"&&m)m.name=t.value;else if(t.dataset.f==="role"&&m)m.role=t.value;
  else if(t.dataset.f==="parent"&&m)m.parent=t.value;
@@ -1110,14 +1123,14 @@ const sortedM=()=>[...S.members].sort((a,b)=>(b.mgr?1:0)-(a.mgr?1:0));
 function parentOpts(m,sel){const ex=m?desc(m.id).concat(m.id):[],ok=x=>!ex.includes(x.id),mg=S.members.filter(x=>x.mgr&&ok(x)),em=S.members.filter(x=>!x.mgr&&ok(x));
  const o=x=>`<option value="${x.id}" ${sel===x.id?"selected":""}>${esc(x.name)}</option>`;
  return `<option value="" ${!sel?"selected":""}>None (top level)</option>`+(mg.length?`<optgroup label="Managers">${mg.map(o).join("")}</optgroup>`:"")+(em.length?`<optgroup label="Employees">${em.map(o).join("")}</optgroup>`:"")}
-function eRow(m){return `<div class="eli2${m.mgr?" ism":""}"><div class="eli">${m.mgr?'<span class="mbadge">MGR</span>':""}<input class="enm" data-enm="${m.id}" value="${esc(m.name)}" maxlength="80" aria-label="Name" title="Click to edit the name"></div><button class="x${delArm===m.id?" arm":""}" data-act="edel" data-id="${m.id}" title="Remove from the team">${delArm===m.id?"Remove?":"✕"}</button><input class="ert tpf" data-tp data-ert="${m.id}" readonly value="${esc(m.role)}" placeholder="Job title" title="Job title" aria-label="Job title of ${esc(m.name)}"><input class="edp tpf" data-dp data-dpn="No department" data-edp="${m.id}" readonly value="${esc(m.dep||"")}" placeholder="No department" title="Department" aria-label="Department of ${esc(m.name)}"><select class="erp" data-erp="${m.id}" title="Reports to">${parentOpts(m,m.parent||"")}</select><label class="mtg" title="Give this person the manager role"><input type="checkbox" data-mgr="${m.id}" ${m.mgr?"checked":""}> Manager</label></div>`}
+function eRow(m){return `<div class="eli2${m.mgr?" ism":""}"><div class="eli">${m.mgr?'<span class="mbadge">MGR</span>':""}<input class="enm" data-enm="${m.id}" value="${esc(m.name)}" maxlength="80" aria-label="Name" title="Click to edit the name"${VIEWONLY?" readonly":""}></div><button class="x${delArm===m.id?" arm":""}" data-act="edel" data-id="${m.id}" title="Remove from the team"${RO}>${delArm===m.id?"Remove?":"✕"}</button><input class="ert tpf" data-tp data-ert="${m.id}" readonly${RO} value="${esc(m.role)}" placeholder="Job title" title="Job title" aria-label="Job title of ${esc(m.name)}"><input class="edp tpf" data-dp data-dpn="No department" data-edp="${m.id}" readonly${RO} value="${esc(m.dep||"")}" placeholder="No department" title="Department" aria-label="Department of ${esc(m.name)}"><select class="erp" data-erp="${m.id}" title="Reports to"${RO}>${parentOpts(m,m.parent||"")}</select><label class="mtg" title="Give this person the manager role"><input type="checkbox" data-mgr="${m.id}" ${m.mgr?"checked":""}${RO}> Manager</label></div>`}
 function renderEL(){
  const want=epSel===undefined?(defParent()||""):epSel;$("#ep").innerHTML=parentOpts(null,want);const srch=!!efq.trim();
  $("#elist").innerHTML=dGroups(efil(),m=>m.dep,false).map(g=>{const fk="e|"+g.d.toLowerCase(),cl=!srch&&!!S.fold[fk];
   return `<div class="dgrp"><button type="button" class="dgh" data-fold="${esc(fk)}" aria-expanded="${!cl}"><i>${cl?"▸":"▾"}</i><b>${esc(g.d||"No department")}</b><span class="bg">${g.it.length}</span></button>${cl?"":g.it.map(eRow).join("")}</div>`}).join("")||'<span class="stat">No matching people.</span>'}
 function rRow(r){const op=S.open[r.id];
- const det=op?`<div class="sub"><textarea class="rdesc" rows="${Math.max(3,Math.ceil((r.desc||"").length/34))}" data-rd="${r.id}" placeholder="Description: detailed information about this responsibility">${esc(r.desc)}</textarea></div>`:"";
- return `<div class="rw" data-r="${r.id}"><div class="ri"><button class="x" data-act="tog" title="${op?"Close":"Open"} description" aria-expanded="${!!op}">${op?"▾":"▸"}</button><input class="nmi" data-rf="${r.id}" value="${esc(r.name)}" aria-label="Responsibility name"><input class="tpf rgi" data-dp data-dpn="General" data-rdp="${r.id}" readonly value="${esc(r.dep||"")}" title="Change department (now: ${esc(r.dep||"General")})" aria-label="Change department of ${esc(r.name)}"><button class="x" data-act="delr" title="Delete">✕</button></div>${det}</div>`}
+ const det=op?`<div class="sub"><textarea class="rdesc" rows="${Math.max(3,Math.ceil((r.desc||"").length/34))}" data-rd="${r.id}" placeholder="Description: detailed information about this responsibility"${VIEWONLY?" readonly":""}>${esc(r.desc)}</textarea></div>`:"";
+ return `<div class="rw" data-r="${r.id}"><div class="ri"><button class="x" data-act="tog" title="${op?"Close":"Open"} description" aria-expanded="${!!op}">${op?"▾":"▸"}</button><input class="nmi" data-rf="${r.id}" value="${esc(r.name)}" aria-label="Responsibility name"${VIEWONLY?" readonly":""}><input class="tpf rgi" data-dp data-dpn="General" data-rdp="${r.id}" readonly${RO} value="${esc(r.dep||"")}" title="Change department (now: ${esc(r.dep||"General")})" aria-label="Change department of ${esc(r.name)}"><button class="x" data-act="delr" title="Delete"${RO}>✕</button></div>${det}</div>`}
 /* Assign levels: the only place to assign (pick one by one or a whole department) */
 function asList(k){const items=k==="r"?S.resp:emps(),M2=k==="r"?S.sel:S.esel,at=k==="r"?"data-pr":"data-pe",none=k==="r"?"General":"No department",q=(($(`[data-asq="${k}"]`)||{}).value||"").trim().toLowerCase();
  if(!items.length)return `<p class="hint" style="margin:8px 0 2px">${k==="r"?"No responsibilities yet – add them in Responsibilities.":"No employees yet – add them in Employees."}</p>`;
@@ -1152,6 +1165,7 @@ document.addEventListener("click",e=>{
  const b=q(e,"[data-act],[data-bl]");if(!b)return;
  if(b.dataset.bl!==undefined){S.bl=b.dataset.bl;render();return}
  const c=b.closest(".card"),id=c&&c.dataset.id,m=id&&S.members.find(x=>x.id===id),act=b.dataset.act,w=b.closest(".rw"),r=w&&Rr(w.dataset.r);
+ if(VIEWONLY){const VOK=new Set(["info","tgl","pick","pickdone","pickall","pickclear","unsel","sdg","sdall","sdnone","asg","asall","asnone","ddopen","calopen","calprev","calnext","exp","tog"]);if(act!==undefined&&!VOK.has(act)){toast("View only — editing isn't available on the public link.",true);return}}
  {const RMV={langdel:"Language removed.",delx:"Field removed.",clr:"Cleared.",unassign:"Responsibility removed from this person.",del:"Person removed.",edel:"Person removed.",delr:"Responsibility removed."};
   if(RMV[act]){const snap=JSON.stringify(S);setTimeout(()=>{if(JSON.stringify(S)!==snap){wSnap=snap;showUndo(RMV[act])}},0)}}
  if(act==="assign")return;
@@ -1198,7 +1212,7 @@ document.addEventListener("click",e=>{
 
  else if(act==="delr"){S.resp=S.resp.filter(x=>x.id!==r.id);S.members.forEach(x=>x.a=x.a.filter(y=>y.r!==r.id));delete S.sel[r.id]}
  render();if(hcOpen())fillHC()});
-const addEmp=()=>{let nm=$("#en").value.trim();const idn=$("#eid").value.trim();if(!idn){$("#eid").classList.add("bad");say("#emsg","Enter the ID No. to add this person.",true);$("#eid").focus();return}
+const addEmp=()=>{if(VIEWONLY)return;let nm=$("#en").value.trim();const idn=$("#eid").value.trim();if(!idn){$("#eid").classList.add("bad");say("#emsg","Enter the ID No. to add this person.",true);$("#eid").focus();return}
  if(!nm){nm="New employee";let n=2;while(S.members.some(x=>x.name.toLowerCase()===nm.toLowerCase()))nm="New employee "+n++}
  if(S.members.some(x=>x.name.toLowerCase()===nm.toLowerCase())){say("#emsg","“"+nm+"” is already in the team. Use the Manager box on that row to change the role.",true);return}
  const im=$("#emgr").checked,rl=$("#er").value.trim()||(im?"Manager":"Engineer");let pr=$("#ep").value||null;if(pr&&!S.members.some(x=>x.id===pr))pr=null;
@@ -1207,16 +1221,16 @@ const addEmp=()=>{let nm=$("#en").value.trim();const idn=$("#eid").value.trim();
 $("#ep").onchange=e=>{epSel=e.target.value};
 $("#eadd").onclick=addEmp;$("#en").onkeydown=$("#eid").onkeydown=e=>{if(e.key==="Enter")addEmp()};$("#eid").oninput=e=>{if(e.target.value.trim())e.target.classList.remove("bad")};
 const pickRM=()=>({rs:S.resp.filter(r=>S.sel[r.id]),ms:S.members.filter(m=>S.esel[m.id]&&!m.mgr)});
-$("#bapply").onclick=()=>{const{rs,ms}=pickRM();if(!rs.length||!ms.length){say("#bmsg","Pick at least one responsibility and one employee first.",true);return}
+$("#bapply").onclick=()=>{if(VIEWONLY)return;const{rs,ms}=pickRM();if(!rs.length||!ms.length){say("#bmsg","Pick at least one responsibility and one employee first.",true);return}
  ms.forEach(m=>rs.forEach(r=>{const x=m.a.find(y=>y.r===r.id);if(x)x.lv=S.bl;else m.a.push({r:r.id,lv:S.bl})}));
  say("#bmsg","");render();doneCollapse(`Assigned ${rs.length} responsibilit${rs.length>1?"ies":"y"} to ${ms.length} employee${ms.length>1?"s":""} as ${LV[S.bl].n}.`,0,"s2")};
-$("#bremove").onclick=()=>{const{rs,ms}=pickRM();if(!rs.length||!ms.length){say("#bmsg","Pick the responsibilities and employees first.",true);return}
+$("#bremove").onclick=()=>{if(VIEWONLY)return;const{rs,ms}=pickRM();if(!rs.length||!ms.length){say("#bmsg","Pick the responsibilities and employees first.",true);return}
  const snap=JSON.stringify(S);ms.forEach(m=>m.a=m.a.filter(x=>!rs.some(r=>r.id===x.r)));say("#bmsg","");render();if(JSON.stringify(S)!==snap){wSnap=snap;delete S.og.s2;applyNav();save();showUndo("Selected responsibilities removed from the selected employees.")}else doneCollapse("None of the selected employees had those responsibilities.",0,"s2")};
-if($("#addm"))$("#addm").onclick=()=>{S.members.push({id:nid(),name:"New member",role:"Engineer",parent:defParent(),a:[],info:{lang:[],extra:[]},g:"",dep:depOf(defParent())});render()};
-let ct;$("#clearall").onclick=function(){if(!ct){this.textContent="Click again";ct=setTimeout(()=>{ct=0;this.textContent="Clear all"},3000)}else{clearTimeout(ct);ct=0;this.textContent="Clear all";wSnap=JSON.stringify(S);S.members.forEach(m=>m.a=[]);render();delete S.og.s2;applyNav();save();showUndo("All assignments removed.")}};
-const addR=()=>{const v=$("#newr").value.trim();if(!v){say("#rmsg","Responsibility name is required.",true);return}S.resp.push({id:nid(),name:v,desc:$("#newd").value.trim(),dep:$("#newdp").value});$("#newr").value="";$("#newd").value="";say("#rmsg","");S.cr=false;render();doneCollapse("Added “"+v+"”.",0,"s1")};
+if($("#addm"))$("#addm").onclick=()=>{if(VIEWONLY)return;S.members.push({id:nid(),name:"New member",role:"Engineer",parent:defParent(),a:[],info:{lang:[],extra:[]},g:"",dep:depOf(defParent())});render()};
+let ct;$("#clearall").onclick=function(){if(VIEWONLY)return;if(!ct){this.textContent="Click again";ct=setTimeout(()=>{ct=0;this.textContent="Clear all"},3000)}else{clearTimeout(ct);ct=0;this.textContent="Clear all";wSnap=JSON.stringify(S);S.members.forEach(m=>m.a=[]);render();delete S.og.s2;applyNav();save();showUndo("All assignments removed.")}};
+const addR=()=>{if(VIEWONLY)return;const v=$("#newr").value.trim();if(!v){say("#rmsg","Responsibility name is required.",true);return}S.resp.push({id:nid(),name:v,desc:$("#newd").value.trim(),dep:$("#newdp").value});$("#newr").value="";$("#newd").value="";say("#rmsg","");S.cr=false;render();doneCollapse("Added “"+v+"”.",0,"s1")};
 $("#addr").onclick=addR;$("#newr").onkeydown=e=>{if(e.key==="Enter")addR()};
-$("#reset").onclick=async function(){if(!await askOk({title:"Reset this plan?",text:"All people, responsibilities, levels and details in this plan are replaced with the starting set. You can undo it straight after.",ok:"Reset"}))return;
+$("#reset").onclick=async function(){if(VIEWONLY)return;if(!await askOk({title:"Reset this plan?",text:"All people, responsibilities, levels and details in this plan are replaced with the starting set. You can undo it straight after.",ok:"Reset"}))return;
  wSnap=JSON.stringify(S);const pid=S.planId;S=norm(fresh());if(pid)S.planId=pid;render();showUndo("Plan reset.")};
 /* employee info hover card */
 const P=id=>S.members.find(x=>x.id===id);
@@ -1228,15 +1242,15 @@ function idTag(hp){const h=document.querySelector("#hc .htags");if(!h)return;let
 function fillHC(){
  if(!hpid)return;const p=P(hpid);if(!p){hideHC();return}
  p.info=p.info||{};const i=p.info;hc.dataset.pid=hpid;
- const row=(k,l,t,ph)=>`<label class="hr"><span>${l}</span><input type="${t}" data-hf="${k}" value="${esc(i[k]||"")}" placeholder="${ph}"><button class="x" data-act="clr" data-hf="${k}" title="Clear">✕</button></label>`;
+ const row=(k,l,t,ph)=>`<label class="hr"><span>${l}</span><input type="${t}" data-hf="${k}" value="${esc(i[k]||"")}" placeholder="${ph}"${RO}><button class="x" data-act="clr" data-hf="${k}" title="Clear"${RO}>✕</button></label>`;
  const ag=asgHTML(p),na=(p.a||[]).length,mx=lvMix(p),top=LVORD.find(k=>mx[k]),rep=kids(p.id).length;
  const ten=(()=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(i.hire||"");if(!m)return"—";const d=new Date(+m[1],+m[2]-1,+m[3]),n=new Date();let mo=(n.getFullYear()-d.getFullYear())*12+n.getMonth()-d.getMonth();if(n.getDate()<d.getDate())mo--;if(mo<0)return"Starts soon";const y=Math.floor(mo/12),r=mo%12;return y?y+"y"+(r?" "+r+"m":""):(r?r+" mo":"New")})();
- hc.innerHTML=`<div class="hch${p.g?" hg-"+p.g:""}${p.mgr?" hmgr":""}"><div class="hxr${p.g?" hx-"+p.g:""}"><div class="hxi">${i.photo?`<img src="${i.photo}" alt="">`:`<span>${esc(initials(p.name))}</span>`}</div></div><div class="hid"><b title="${esc(p.name)}">${esc(p.name)}</b><span>${esc(p.role||"")}</span><div class="htags">${p.mgr?'<span class="htg hm">Manager</span>':""}${(i.idn||"").trim()?`<span class="htg hidn">ID ${esc(i.idn.trim())}</span>`:""}${p.dep?`<span class="htg">${esc(p.dep)}</span>`:""}${p.g?`<span class="htg">${p.g==="f"?"Female":"Male"}</span>`:""}</div><div class="hpa"><label class="up hpb">${i.photo?"Change photo":"Upload photo"}<input type="file" accept="image/*" data-hf="photo" hidden></label>${i.photo?`<button class="x hpb" data-act="clr" data-hf="photo">Remove photo</button>`:""}</div></div></div>
+ hc.innerHTML=`<div class="hch${p.g?" hg-"+p.g:""}${p.mgr?" hmgr":""}"><div class="hxr${p.g?" hx-"+p.g:""}"><div class="hxi">${i.photo?`<img src="${i.photo}" alt="">`:`<span>${esc(initials(p.name))}</span>`}</div></div><div class="hid"><b title="${esc(p.name)}">${esc(p.name)}</b><span>${esc(p.role||"")}</span><div class="htags">${p.mgr?'<span class="htg hm">Manager</span>':""}${(i.idn||"").trim()?`<span class="htg hidn">ID ${esc(i.idn.trim())}</span>`:""}${p.dep?`<span class="htg">${esc(p.dep)}</span>`:""}${p.g?`<span class="htg">${p.g==="f"?"Female":"Male"}</span>`:""}</div><div class="hpa">${VIEWONLY?"":`<label class="up hpb">${i.photo?"Change photo":"Upload photo"}<input type="file" accept="image/*" data-hf="photo" hidden></label>${i.photo?`<button class="x hpb" data-act="clr" data-hf="photo">Remove photo</button>`:""}`}</div></div></div>
  <div class="hst"><div class="hti"><b>${p.mgr?rep:na}</b><span>${p.mgr?"Direct reports":"Responsibilities"}</span></div><div class="hti"><b class="${top?"l-"+top:""}" style="${top?"color:var(--lc)":""}">${top?LV[top].n:"—"}</b><span>Highest level</span></div><div class="hti"><b>${ten}</b><span>With the company</span></div></div>
  ${p.mgr?"":`<div class="hlv"><div class="lvbar lg">${lvBar(mx,na)}</div><div class="hlk">${LK.map(k=>`<span class="l-${k}"><i></i>${LV[k].n} ${mx[k]}</span>`).join("")}${mx.n?`<span class="l-n"><i></i>No level ${mx.n}</span>`:""}</div></div>`}
- <div class="hsec"><div class="hsl">Profile</div><label class="hr hreq"><span>ID No.</span><input type="text" data-hf="idn" value="${esc(i.idn||"")}" placeholder="Enter ID No." maxlength="40" aria-required="true"><button class="x" data-act="clr" data-hf="idn" title="Clear">✕</button></label><label class="hr"><span>Gender</span><select data-hf="g"><option value="">Not set</option><option value="f" ${p.g==="f"?"selected":""}>Female</option><option value="m" ${p.g==="m"?"selected":""}>Male</option></select></label><div class="hr"><span>Department</span><input class="tpf hdp" data-dp data-dpn="No department" data-hdep="1" readonly value="${esc(p.dep||"")}" placeholder="No department" aria-label="Department"></div>${hireRow(i)}${natRow(i)}${langRow(i)}</div>
+ <div class="hsec"><div class="hsl">Profile</div><label class="hr hreq"><span>ID No.</span><input type="text" data-hf="idn" value="${esc(i.idn||"")}" placeholder="Enter ID No." maxlength="40" aria-required="true"${RO}><button class="x" data-act="clr" data-hf="idn" title="Clear"${RO}>✕</button></label><label class="hr"><span>Gender</span><select data-hf="g"${RO}><option value="">Not set</option><option value="f" ${p.g==="f"?"selected":""}>Female</option><option value="m" ${p.g==="m"?"selected":""}>Male</option></select></label><div class="hr"><span>Department</span><input class="tpf hdp" data-dp data-dpn="No department" data-hdep="1" readonly${RO} value="${esc(p.dep||"")}" placeholder="No department" aria-label="Department"></div>${hireRow(i)}${natRow(i)}${langRow(i)}</div>
  <div class="hsec"><div class="hsl">Contact</div>${row("email","Email","email","name@company.com")}${row("phone","Phone","tel","+966 ...")}</div>
- <div class="hsec"><div class="hsl">Additional details</div>${(i.extra||[]).map((x,n)=>`<div class="hr"><input class="xk" data-hx="k|${n}" value="${esc(x.k)}" placeholder="Field name"><input data-hx="v|${n}" value="${esc(x.v)}" placeholder="Value"><button class="x" data-act="delx" data-n="${n}" title="Remove this field">✕</button></div>`).join("")}<button class="btn addf" data-act="addx">+ Add field</button></div>
+ ${VIEWONLY&&!(i.extra||[]).length?"":`<div class="hsec"><div class="hsl">Additional details</div>${(i.extra||[]).map((x,n)=>`<div class="hr"><input class="xk" data-hx="k|${n}" value="${esc(x.k)}" placeholder="Field name"${RO}><input data-hx="v|${n}" value="${esc(x.v)}" placeholder="Value"${RO}><button class="x" data-act="delx" data-n="${n}" title="Remove this field"${RO}>✕</button></div>`).join("")}${VIEWONLY?"":`<button class="btn addf" data-act="addx">+ Add field</button>`}</div>`}
  ${ag?`<div class="hsec hasg">${ag}</div>`:""}`;
  hc.querySelectorAll(".hr>span:first-child").forEach(sp=>{const ic=HCI[sp.textContent.trim()];if(ic&&!sp.querySelector("svg"))sp.insertAdjacentHTML("afterbegin",ic)})}
 function showHC(pid,anchor,pin){if(!S.hintDone){S.hintDone=1;save();setTimeout(()=>window.cmarkUpdate&&cmarkUpdate(),0)}
@@ -1258,13 +1272,13 @@ let calY=0,calM=0;
 function asgHTML(p){if(!p.a||p.mgr)return"";const n=p.a.length;return `<div class="hs">Assigned responsibilities (${n})</div><div class="hbox">${n?p.a.map(x=>arow(p,x)).join(""):'<span class="stat">None yet. Use Assign levels in the menu (☰).</span>'}</div>`}
 const langBtn=s=>s.length?s.length+" selected":"Select languages";
 const langChips=s=>s.map(c=>`<span class="lc">${esc((LANG.find(x=>x.c===c)||{n:c}).n)}<i data-act="langdel" data-c="${c}" title="Remove">×</i></span>`).join("");
-function langRow(i){const sel=i.lang||[];return `<div class="hr"><span>Languages</span><div class="dd"><button type="button" class="ddb${sel.length?"":" pl"}" data-act="ddopen" data-lb="1">${langBtn(sel)}</button><div class="ddl" hidden><input class="dds" placeholder="Search language…"><div class="ddo">${LANG.map(e=>`<div class="ddi${sel.includes(e.c)?" sel":""}" data-act="langpick" data-c="${e.c}" data-s="${esc((e.n+" "+e.c).toLowerCase())}">${esc(e.n)}<span>${sel.includes(e.c)?"✓":e.c}</span></div>`).join("")}<div class="ddn" hidden>No match</div></div></div></div><button class="x" data-act="clr" data-hf="lang" title="Clear all">✕</button></div><div class="lch" data-lch>${langChips(sel)}</div>`}
+function langRow(i){const sel=i.lang||[];return `<div class="hr"><span>Languages</span><div class="dd"><button type="button" class="ddb${sel.length?"":" pl"}" data-act="ddopen" data-lb="1"${RO}>${langBtn(sel)}</button><div class="ddl" hidden><input class="dds" placeholder="Search language…"><div class="ddo">${LANG.map(e=>`<div class="ddi${sel.includes(e.c)?" sel":""}" data-act="langpick" data-c="${e.c}" data-s="${esc((e.n+" "+e.c).toLowerCase())}">${esc(e.n)}<span>${sel.includes(e.c)?"✓":e.c}</span></div>`).join("")}<div class="ddn" hidden>No match</div></div></div></div><button class="x" data-act="clr" data-hf="lang" title="Clear all"${RO}>✕</button></div><div class="lch" data-lch>${langChips(sel)}</div>`}
 function refreshLang(){const p=P(hc.dataset.pid),s=p.info.lang||[],b=hc.querySelector('[data-lb]');
  if(b){b.textContent=langBtn(s);b.classList.toggle("pl",!s.length)}
  hc.querySelectorAll('.ddi[data-act="langpick"]').forEach(x=>{const on=s.includes(x.dataset.c);x.classList.toggle("sel",on);x.lastElementChild.textContent=on?"✓":x.dataset.c});
  const ch=hc.querySelector("[data-lch]");if(ch)ch.innerHTML=langChips(s)}
-function natRow(i){return `<div class="hr"><span>Nationality</span><div class="dd"><button type="button" class="ddb${i.nat?"":" pl"}" data-act="ddopen">${i.nat?esc(natLabel(i.nat)):"Select Nationality"}</button><div class="ddl" hidden><input class="dds" placeholder="Search nationality or country…"><div class="ddo">${NAT.map(e=>`<div class="ddi${i.nat===e.c?" sel":""}" data-act="natpick" data-c="${e.c}" data-s="${esc((e.n+" "+e.k+" "+e.c).toLowerCase())}">${esc(e.n)}<span>${e.c}</span></div>`).join("")}<div class="ddn" hidden>No match</div></div></div></div><button class="x" data-act="clr" data-hf="nat" title="Clear">✕</button></div>`}
-function hireRow(i){return `<div class="hr"><span>Hiring date</span><div class="dd"><button type="button" class="ddb${i.hire?"":" pl"}" data-act="calopen">${i.hire?fmtD(i.hire):"Select date"}</button><div class="ddl cal" hidden></div></div><button class="x" data-act="clr" data-hf="hire" title="Clear">✕</button></div>`}
+function natRow(i){return `<div class="hr"><span>Nationality</span><div class="dd"><button type="button" class="ddb${i.nat?"":" pl"}" data-act="ddopen"${RO}>${i.nat?esc(natLabel(i.nat)):"Select Nationality"}</button><div class="ddl" hidden><input class="dds" placeholder="Search nationality or country…"><div class="ddo">${NAT.map(e=>`<div class="ddi${i.nat===e.c?" sel":""}" data-act="natpick" data-c="${e.c}" data-s="${esc((e.n+" "+e.k+" "+e.c).toLowerCase())}">${esc(e.n)}<span>${e.c}</span></div>`).join("")}<div class="ddn" hidden>No match</div></div></div></div><button class="x" data-act="clr" data-hf="nat" title="Clear"${RO}>✕</button></div>`}
+function hireRow(i){return `<div class="hr"><span>Hiring date</span><div class="dd"><button type="button" class="ddb${i.hire?"":" pl"}" data-act="calopen"${RO}>${i.hire?fmtD(i.hire):"Select date"}</button><div class="ddl cal" hidden></div></div><button class="x" data-act="clr" data-hf="hire" title="Clear"${RO}>✕</button></div>`}
 function renderCal(l){
  const p=P(hc.dataset.pid),sel=(p.info||{}).hire||"",td=isoD(new Date()),ys=new Date().getFullYear(),st=new Date(calY,calM,1).getDay();
  const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -1752,10 +1766,10 @@ async function eImport(file){const{ws,heads}=await xlRead(file),ni=heads["employ
  S.ce=false;render();
  return `Imported: ${news.length} added, ${upd} updated`+(same?`, ${same} unchanged`:"")+"."+(warn.length?" Not recognised (kept as typed or as before): "+bump([...new Set(warn)])+".":"")}
 const xlRun=(msgId,fn,ok)=>async e=>{const f=e&&e.target&&e.target.files?e.target.files[0]:null;try{if(e&&e.target&&e.target.files){e.target.value="";if(!f)return}const t=await fn(f);say(msgId,t||ok)}catch(err){say(msgId,err.message||String(err),true)}};
-$("#rimp").onclick=()=>$("#rfile").click();$("#rfile").onchange=xlRun("#rmsg",async f=>{const t=await rImport(f);if(t){say("#rmsg","");doneCollapse(t,0,"s1")}return ""});
+$("#rimp").onclick=()=>{if(!VIEWONLY)$("#rfile").click()};$("#rfile").onchange=xlRun("#rmsg",async f=>{const t=await rImport(f);if(t){say("#rmsg","");doneCollapse(t,0,"s1")}return ""});
 $("#rexp").onclick=xlRun("#rmsg",async()=>{await rExport(false);return "Exported "+S.resp.length+" responsibilities."});
 $("#rtpl").onclick=xlRun("#rmsg",async()=>{await rExport(true);return "Template downloaded."});
-$("#eimp").onclick=()=>$("#efile").click();$("#efile").onchange=xlRun("#emsg",async f=>{const snap=JSON.stringify(S),t=await eImport(f);if(t){say("#emsg","");if(JSON.stringify(S)!==snap){wSnap=snap;delete S.og.s3;applyNav();save();showUndo(t)}else doneCollapse(t,0,"s3")}return ""});
+$("#eimp").onclick=()=>{if(!VIEWONLY)$("#efile").click()};$("#efile").onchange=xlRun("#emsg",async f=>{const snap=JSON.stringify(S),t=await eImport(f);if(t){say("#emsg","");if(JSON.stringify(S)!==snap){wSnap=snap;delete S.og.s3;applyNav();save();showUndo(t)}else doneCollapse(t,0,"s3")}return ""});
 $("#eexp").onclick=xlRun("#emsg",async()=>{await eExport(false);return "Exported "+S.members.length+" employees."});
 $("#etpl").onclick=xlRun("#emsg",async()=>{await eExport(true);return "Template downloaded."});
 let tT;/* confirmation box – only for actions that can't be undone */
@@ -1927,7 +1941,7 @@ function wRender(){requestAnimationFrame(wFitPv);wNormT(W.L);const b=$("#wzb"),f
   b.innerHTML=`<div class="wdone"><div class="wok">${WI.ok}</div><h3>${W.made} ${W.made===1?"person":"people"} added to your plan</h3><p>${W.L.map((l,i)=>l.tm==="each"?wTitleSum(l):t[i]+" × "+esc(l.t)).join(" · ")}</p>
   <div class="wnext"><b>Next step: add your team's responsibilities</b>Open the menu (☰) → <b>Responsibilities</b> to add them or import them from Excel. Then use <b>Assign levels</b> to give them to your team.</div><div class="wnote wtip wtipc"><b>Need a small change later?</b> To move someone to a different leader, open the menu (☰) → <b>Employees</b>, find the person and change their <b>Reports to</b>.</div></div>`;
   f.innerHTML=`<button type="button" class="btn" data-w="undo" title="Restore the plan as it was before the wizard">Undo</button><span class="sp"></span><button type="button" class="btn" data-w="toresp">Go to Responsibilities</button><button type="button" class="btn p" data-w="tour">Show me around (${TOUR.length} tips) →</button>`}}
-function wOpen(step){closeIO(false);hlpClose(false);if(typeof tourEnd==="function"&&!$("#tour").hidden)tourEnd();if(!isPush()&&navOpen){navOpen=false;applyNav()}
+function wOpen(step){if(VIEWONLY)return;closeIO(false);hlpClose(false);if(typeof tourEnd==="function"&&!$("#tour").hidden)tourEnd();if(!isPush()&&navOpen){navOpen=false;applyNav()}
  wLastFocus=document.activeElement;W={step:step||"struct",L:WLD.slice(0,3).map((t,i)=>({t,n:[1,2,4][i],m:i===0,mode:"same",per:[],tm:"same",tp:[]})),mode:"replace",blankArm:false,made:0};
  $("#wiz").hidden=false;document.body.style.overflow="hidden";wRender();wFocus()}
 function wFocus(){requestAnimationFrame(()=>{const el=$("#wzb").querySelector(".wcard,button:not(:disabled),select,input")||$("#wiz").querySelector("[data-w=close]");if(el)el.focus({preventScroll:true});$("#wzb").scrollTop=0})}
@@ -2254,6 +2268,7 @@ async function xlFull(){xlOK();
  const when=t=>{const d=new Date(t),n=new Date();return d.toDateString()===n.toDateString()?"today "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):d.toLocaleDateString([],{day:"2-digit",month:"short",year:"numeric"})};
  function paint(){const c=cur();
   const list=PL.map(x=>`<button type="button" role="menuitemradio" aria-checked="${x.id===S.planId}" class="pli${x.id===S.planId?" cur":""}" data-plo="${x.id}"><span class="plt"><b>${esc(x.name)}</b><small>${x.people} ${x.people===1?"person":"people"} · edited ${when(x.updated)}</small></span>${x.id===S.planId?'<i class="plk">✓</i>':""}</button>`).join("")||'<div class="pl0">No saved plans yet.</div>';
+  if(VIEWONLY){m.innerHTML=`<div class="iomh">My plans</div><div class="pll">${list}</div>`;return}
   const form=mode?`<form class="plform" id="plform"><label for="plname">${mode==="saveas"?"Save a copy as":mode==="rename"?"Rename this plan":"Name of the new plan"}</label><div class="plrow"><input id="plname" maxlength="60" value="${esc(mode==="rename"?(c?c.name:""):mode==="saveas"?(c?c.name+" copy":""):"New plan")}" autocomplete="off"><button type="submit" class="btn p sm">${mode==="rename"?"Rename":mode==="saveas"?"Save copy":"Create"}</button><button type="button" class="btn sm" data-pla="cancel">Cancel</button></div></form>`:"";
   m.innerHTML=`<div class="iomh">My plans</div><div class="pll">${list}</div>${form}<hr>
    <button type="button" role="menuitem" data-pla="new">${SVG.plus}<span>New plan</span></button>
@@ -2273,11 +2288,12 @@ async function xlFull(){xlOK();
  $("#plb").addEventListener("click",e=>{e.stopPropagation();m.hidden?open():close(true)});
  document.addEventListener("click",e=>{if(!(e.target.closest&&e.target.closest("#plw")))close(false)});
  m.addEventListener("keydown",e=>{if(e.key==="Escape"){e.stopPropagation();if(mode){mode="";paint();return}close(true)}},true);
- m.addEventListener("submit",async e=>{e.preventDefault();const v=$("#plname").value.trim();if(!v){$("#plname").focus();return}const md=mode;mode="";
+ m.addEventListener("submit",async e=>{e.preventDefault();if(VIEWONLY)return;const v=$("#plname").value.trim();if(!v){$("#plname").focus();return}const md=mode;mode="";
   if(md==="rename"){const c=cur();const pl=await getOne(S.planId);if(pl){PL=PL.filter(x=>x.id!==pl.id);pl.name=uniq(v);pl.updated=Date.now();pl.data=planOf();await putOne(pl);PL.unshift(meta(pl))}paintBtn();paint();toast("Plan renamed.");return}
   if(md==="saveas"){await create(v,planOf());close();toast("Saved as “"+cur().name+"”.");return}
   if(md==="new"){await create(v,{title:v,prep:S.prep||"",resp:XP?[]:DEF(),members:[fresh().members[0]]});close();toast("New plan “"+cur().name+"” created.");setTimeout(()=>window.wOpen&&wOpen("struct"),250)}});
  m.addEventListener("click",async e=>{e.stopPropagation();const o=e.target.closest("[data-plo]");if(o){openPlan(o.dataset.plo);return}
+  if(VIEWONLY)return;
   const rb=e.target.closest("[data-plr]");if(rb){const pl=await getOne(rb.dataset.plr);if(pl){delete pl.trashed;pl.name=uniq(pl.name);await putOne(pl);await refresh();paint();toast("“"+pl.name+"” restored.")}return}
   const xb=e.target.closest("[data-plx]");if(xb){const t=TR.find(x=>x.id===xb.dataset.plx);if(!t)return;if(!await askOk({title:"Delete “"+t.name+"” forever?",text:"This plan and everyone in it will be removed for good. This can't be undone.",ok:"Delete forever"}))return;await delOne(t.id);await refresh();paint();toast("Plan deleted forever.");return}
   const b=e.target.closest("[data-pla]");if(!b)return;const a=b.dataset.pla;
@@ -2293,7 +2309,7 @@ async function xlFull(){xlOK();
     await dl.save({filename:(out.name||"plan").replace(/[\\\/:*?"<>|]+/g," ").trim().slice(0,60)+".json",data:u.buffer.slice(u.byteOffset,u.byteOffset+u.byteLength)});toast("Plan file saved.")}catch(err){toast(err&&err.code==="declined"?"Save cancelled.":"Could not save the plan file: "+(err&&err.message||err),true)}return}
   if(a==="import"){close();$("#plf").click();return}
   if(a==="merge"){close();await flush();$("#mgf").click();return}});
- $("#plf").addEventListener("change",async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;
+ $("#plf").addEventListener("change",async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f||VIEWONLY)return;
   try{const j=JSON.parse(await f.text()),pd=j&&j.plan;if(!j||j.app!=="afaqy-after-sales-planner"||!pd||!Array.isArray(pd.members)||!Array.isArray(pd.resp))throw 0;tMerge(j.titles);dMerge(j.deps);dMerge(dUsed(pd));
    const prev=S.planId;const pl=await create(j.name||pd.title||f.name.replace(/\.json$/i,""),{title:pd.title||"",prep:pd.prep||"",resp:pd.resp,members:pd.members});
    showUndoX("Imported “"+pl.name+"”.",async()=>{busy=true;await delOne(pl.id);PL=PL.filter(x=>x.id!==pl.id);busy=false;const back=prev&&await getOne(prev);if(back)load(back);toast("Import undone.")})}
@@ -2322,7 +2338,7 @@ function mgRender(){const f=MG,pd=f.plan,nm=new Set(S.resp.map(r=>r.name.trim().
  <div class="wnote">Job titles, profiles and responsibility levels come with the team. Responsibilities with the same name are combined; new ones are added to your list.</div>`;
  $("#mgf2").innerHTML=`<button type="button" class="btn" data-mg="close">Cancel</button><span class="sp"></span><button type="button" class="btn p" data-mg="go">${f.old.length?"Update team":"Add team"}</button>`;
  requestAnimationFrame(()=>{const x=$("#mgpar");if(x)x.focus()})}
-$("#mgf").addEventListener("change",async e=>{const fl=e.target.files&&e.target.files[0];e.target.value="";if(!fl)return;let j;
+$("#mgf").addEventListener("change",async e=>{const fl=e.target.files&&e.target.files[0];e.target.value="";if(!fl||VIEWONLY)return;let j;
  try{j=JSON.parse(await fl.text());const pd=j&&j.plan;if(!j||j.app!=="afaqy-after-sales-planner"||!pd||!Array.isArray(pd.members)||!Array.isArray(pd.resp)||!pd.members.length)throw 0}catch(err){toast("This file isn't a planner plan file, so nothing was changed.",true);return}tMerge(j.titles);dMerge(j.deps);dMerge(dUsed(j.plan));
  const key=mgKey(j),old=S.members.filter(m=>m.src===key).map(m=>m.id),oldRoot=S.members.find(m=>m.src===key&&!old.includes(m.parent));
  const r0=roots()[0];MG={key,name:j.name||j.plan.title||fl.name.replace(/\.json$/i,""),plan:j.plan,old,par:oldRoot?(oldRoot.parent||""):(r0?r0.id:"")};
