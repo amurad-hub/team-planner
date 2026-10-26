@@ -603,6 +603,10 @@ aside#drawer{max-height:calc(100vh - var(--hh) - var(--fh) - 24px)}
 .hch.hmgr{background:var(--mgrline) top/100% 3px no-repeat,var(--navyg)}
 /* female touch: pink ring (existing) + pink corner mark (cards + popup) */
 #tree .card.g-f .ctop::after,.hch.hg-f::after{display:none;content:"";position:absolute;top:0;left:0;width:16px;height:16px;background:linear-gradient(135deg,#e08fb0 50%,transparent 50%);pointer-events:none}
+/* gender accent: smooth gradient stripe across the top of the card */
+#tree .card.g-f::before,#tree .card.g-m::before{content:"";display:block;position:absolute;top:0;left:0;right:0;height:4px;z-index:2;pointer-events:none}
+#tree .card.g-f::before{background:linear-gradient(90deg,#c23f7f,#f2a9cb)}
+#tree .card.g-m::before{background:linear-gradient(90deg,#1d4ed8,#38bdf8)}
 #tree .card.root.g-f .ctop::after{top:3px}
 .hch.hmgr.hg-f::after{top:3px}
 /* smooth "card grows into popup" */
@@ -1063,7 +1067,7 @@ $("#lvsel").innerHTML=LK.map(k=>`<button class="${k}${S.bl===k?" on":""}" data-b
  requestAnimationFrame(fitNames);
  save();
 }
-$("#legend").innerHTML=`<div class="lh">Responsibility levels</div>`+LK.map(k=>`<div><span class="chip l-${k}" style="cursor:default"><b>${LV[k].s}</b>${LV[k].n}</span><div class="ld">${LV[k].d}</div></div>`).join("")+`<div class="lh">Gender colors</div><div><span class="gsw g-f">Female · pink ring</span> <span class="gsw g-m">Male · blue ring</span></div>`;
+$("#legend").innerHTML=`<div class="lh">Responsibility levels</div>`+LK.map(k=>`<div><span class="chip l-${k}" style="cursor:default"><b>${LV[k].s}</b>${LV[k].n}</span><div class="ld">${LV[k].d}</div></div>`).join("")+`<div class="lh">Gender colors</div><div><span class="gsw g-f">Female · rose stripe</span> <span class="gsw g-m">Male · blue stripe</span></div>`;
 
 const q=(e,s)=>e.target.closest(s);
 document.addEventListener("change",e=>{
