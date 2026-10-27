@@ -866,11 +866,12 @@ html.viewonly main{gap:0}
 html.viewonly #hlw{display:none!important}
 /* point 2: Export becomes a single plain button (markup swapped at startup; this just makes sure the swapped button looks right) */
 html.viewonly #pdfw .pdfc{display:none!important}
-/* point 3: on mobile/tablet, the search bar is docked into the footer (JS moves the node there) instead of floating in the zoom toolbar */
-html.viewonly #ftr{flex-wrap:wrap}
-html.viewonly #ftr .zfind{order:-1;flex:1 0 100%;justify-content:center;margin:0 0 6px}
-html.viewonly #ftr .zfind input{flex:0 1 260px}
-html.viewonly #ftr .zres{left:50%;transform:translateX(-50%)}
+/* point 3: on mobile/tablet, the WHOLE chart toolbar (search, zoom, fit, compact, expand/collapse, direction) is
+   docked into the footer (JS moves the node there) instead of floating over the canvas, so none of it can end up
+   under the browser's own bottom bar or be hard to reach. */
+html.viewonly #ftr{flex-wrap:wrap;align-items:center}
+html.viewonly #ftr .zbar{order:-1;flex:1 0 100%;position:static;margin:0 0 6px;justify-content:center;flex-wrap:wrap;background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;padding:4px 0}
+html.viewonly #ftr .zfind input{flex:0 1 220px}
 </style></head><body><canvas id="pbg" aria-hidden="true"></canvas>
 <header id="hdr">
 <button class="hbtn" id="navbtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="drawer" title="Menu"><span class="hbi"><i></i><i></i><i></i></span></button>
@@ -2385,15 +2386,16 @@ document.addEventListener("click",e=>{if(!(e.target.closest&&e.target.closest("#
 addEventListener("keydown",e=>{const m=$("#pdfm");if(!m||m.hidden)return;if(e.key==="Escape"){e.stopPropagation();pdfClose(true)}else if(e.key==="ArrowDown"||e.key==="ArrowUp"){const it=[...m.querySelectorAll("button")],i=it.indexOf(document.activeElement);e.preventDefault();it[(i+(e.key==="ArrowDown"?1:-1)+it.length)%it.length].focus()}else if(e.key==="Tab")pdfClose(false)},true);
 /* point 2: public link gets one plain "Export Excel" button instead of the PDF/Excel/new-user dropdown */
 if(VIEWONLY){const pw=$("#pdfw");if(pw){pw.innerHTML='<button class="btn p" id="pdf" type="button">Export Excel</button>';$("#pdf").onclick=()=>{toast("Preparing the Excel report…");xlFull().then(n=>toast("Excel report ready ("+n+" tabs)."),err=>toast(err&&err.code==="declined"?"Save cancelled.":"Could not create the Excel report: "+(err&&err.message||err),true))}}}
-/* point 3 (reworked): on mobile/tablet, dock the search bar inside the footer (which already handles the
-   browser's bottom bar / safe-area correctly) instead of floating it, so it can't drift or sit under the
-   on-screen keyboard. Reparenting on breakpoint crossing also fixes it on rotation. */
+/* point 3 (reworked): on mobile/tablet, dock the WHOLE floating toolbar (.zbar: search, zoom, fit, compact,
+   expand/collapse, direction) inside the footer, which already handles the browser's bottom bar / safe-area
+   correctly, instead of floating it over the canvas where it can end up hard to reach. Reparenting on breakpoint
+   crossing also fixes it on rotation. */
 if(VIEWONLY){
- const zf=$(".zfind"),zbar=$(".zbar"),ftr=$("#ftr"),mqd=matchMedia("(max-width:899px)");
+ const zbar=$(".zbar"),vpEl=$("#vp"),ftr=$("#ftr"),mqd=matchMedia("(max-width:899px)");
  const fh=()=>{if(!ftr)return;requestAnimationFrame(()=>document.documentElement.style.setProperty("--fh",ftr.getBoundingClientRect().height+"px"))};
- const dock=()=>{if(!zf||!zbar||!ftr)return;
-  if(mqd.matches&&zf.parentNode!==ftr)ftr.insertBefore(zf,ftr.firstChild);
-  else if(!mqd.matches&&zf.parentNode!==zbar)zbar.insertBefore(zf,zbar.firstChild);
+ const dock=()=>{if(!zbar||!vpEl||!ftr)return;
+  if(mqd.matches&&zbar.parentNode!==ftr)ftr.insertBefore(zbar,ftr.firstChild);
+  else if(!mqd.matches&&zbar.parentNode!==vpEl)vpEl.appendChild(zbar);
   fh()};
  dock();mqd.addEventListener?mqd.addEventListener("change",dock):mqd.addListener(dock);
  addEventListener("resize",fh);addEventListener("orientationchange",dock);
