@@ -859,6 +859,17 @@ html.viewonly button[disabled]:not(.ddb){display:none!important}
 html.viewonly .ddb[disabled]{pointer-events:none;cursor:default}
 html.viewonly select[disabled],html.viewonly input[disabled],html.viewonly input[readonly],html.viewonly textarea[readonly]{cursor:default;background-image:none;opacity:.85}
 html.viewonly #tree .card .nm[readonly]{cursor:default}
+/* point 1: no planner menu at all on the public link */
+html.viewonly #navbtn,html.viewonly aside#drawer,html.viewonly .drs,html.viewonly .scrim{display:none!important}
+html.viewonly main{gap:0}
+/* point 4: no Help button/menu on the public link */
+html.viewonly #hlw{display:none!important}
+/* point 2: Export becomes a single plain button (markup swapped at startup; this just makes sure the swapped button looks right) */
+html.viewonly #pdfw .pdfc{display:none!important}
+/* point 3: on mobile/tablet, pin the search bar centered and fixed, detached from the floating zoom toolbar */
+@media(max-width:899px){
+ html.viewonly .zfind{position:fixed;left:50%;bottom:calc(var(--fh) + 10px);transform:translateX(-50%);z-index:48;box-shadow:0 6px 18px rgba(0,0,0,.18);background:var(--sf)}
+}
 </style></head><body><canvas id="pbg" aria-hidden="true"></canvas>
 <header id="hdr">
 <button class="hbtn" id="navbtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="drawer" title="Menu"><span class="hbi"><i></i><i></i><i></i></span></button>
@@ -2365,17 +2376,19 @@ $("#mgz").addEventListener("click",e=>{if(e.target.id==="mgz")return mgClose();c
  const msg=(wasUpd?"Team updated: ":"Team added: ")+inc.length+" "+(inc.length===1?"person":"people")+".";
  if(window.plUndo)plUndo(msg,()=>{S=norm(JSON.parse(snap));render();save();toast("Change undone.")});else toast(msg)});
 $("#prep").onchange=e=>{S.prep=e.target.value;save()};
-function pdfClose(fb){const m=$("#pdfm");if(m.hidden)return;m.hidden=true;$("#pdf").setAttribute("aria-expanded","false");if(fb)$("#pdf").focus()}
+function pdfClose(fb){const m=$("#pdfm");if(!m||m.hidden)return;m.hidden=true;$("#pdf").setAttribute("aria-expanded","false");if(fb)$("#pdf").focus()}
 $("#pdf").onclick=e=>{e.stopPropagation();const m=$("#pdfm");if(!m.hidden){pdfClose(true);return}closeIO(false);hlpClose(false);
  m.querySelectorAll("[data-pdft]").forEach(b=>b.classList.toggle("cur",b.dataset.pdft===S.pt));m.hidden=false;$("#pdf").setAttribute("aria-expanded","true");(m.querySelector(".cur")||m.querySelector("button")).focus()};
 $("#pdfm").addEventListener("click",e=>{const nu=e.target.closest("[data-nuc]");if(nu){pdfClose(false);$("#pdf").focus();nuCopy();return}const xb=e.target.closest("[data-xfull]");if(xb){pdfClose(false);$("#pdf").focus();toast("Preparing the Excel report…");xlFull().then(n=>toast("Excel report ready ("+n+" tabs)."),err=>toast(err&&err.code==="declined"?"Save cancelled.":"Could not create the Excel report: "+(err&&err.message||err),true));return}const b=e.target.closest("[data-pdft]");if(!b)return;S.pt=b.dataset.pdft;save();pdfClose(false);$("#pdf").focus();exportPdf()});
 document.addEventListener("click",e=>{if(!(e.target.closest&&e.target.closest("#pdfw")))pdfClose(false)});
-addEventListener("keydown",e=>{const m=$("#pdfm");if(m.hidden)return;if(e.key==="Escape"){e.stopPropagation();pdfClose(true)}else if(e.key==="ArrowDown"||e.key==="ArrowUp"){const it=[...m.querySelectorAll("button")],i=it.indexOf(document.activeElement);e.preventDefault();it[(i+(e.key==="ArrowDown"?1:-1)+it.length)%it.length].focus()}else if(e.key==="Tab")pdfClose(false)},true);
+addEventListener("keydown",e=>{const m=$("#pdfm");if(!m||m.hidden)return;if(e.key==="Escape"){e.stopPropagation();pdfClose(true)}else if(e.key==="ArrowDown"||e.key==="ArrowUp"){const it=[...m.querySelectorAll("button")],i=it.indexOf(document.activeElement);e.preventDefault();it[(i+(e.key==="ArrowDown"?1:-1)+it.length)%it.length].focus()}else if(e.key==="Tab")pdfClose(false)},true);
+/* point 2: public link gets one plain "Export Excel" button instead of the PDF/Excel/new-user dropdown */
+if(VIEWONLY){const pw=$("#pdfw");if(pw){pw.innerHTML='<button class="btn p" id="pdf" type="button">Export Excel</button>';$("#pdf").onclick=()=>{toast("Preparing the Excel report…");xlFull().then(n=>toast("Excel report ready ("+n+" tabs)."),err=>toast(err&&err.code==="declined"?"Save cancelled.":"Could not create the Excel report: "+(err&&err.message||err),true))}}}
 render();zInit();
 (function(){if(S.phv===2)return;const L=S.members.filter(m=>m.info&&m.info.photo&&m.info.photo.length>14000);if(!L.length){S.phv=2;save();return}
  let n=L.length;const done=()=>{if(--n<=0){S.phv=2;save();render()}};
  L.forEach(m=>{const im=new Image();im.onload=()=>{try{const s=Math.min(im.width,im.height),c=document.createElement("canvas");c.width=c.height=160;const g=c.getContext("2d");g.imageSmoothingQuality="high";g.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,160,160);const u=c.toDataURL("image/jpeg",.72);if(u.length<m.info.photo.length)m.info.photo=u}catch(e){}done()};im.onerror=done;im.src=m.info.photo})})();
-if(!S.wz)setTimeout(introStart,350);
+if(!S.wz&&!VIEWONLY)setTimeout(introStart,350);
 
 /* ===== v24.29: one shared job-title list (searchable; add, rename, remove) ===== */
 var TDEF=/*TDEF*/["Branch Manager.", "Sales Manager.", "Technical Manager.", "R&D Manager.", "After-sales Manager", "Projects consultant", "Collections Operations Manager.", "Customers Relation Coordinator", "Collection Department", "Project Engineer", "Sales Engineer", "After-sales Engineer", "R&D Engineer", "Technician Coordinator Team Leader", "Operations Department", "Sales Coordinator", "key Account Manager", "Account Manager", "Accountant", "Configuration Manager", "Configuration Engineer", "Warehouse & Inventory Department", "Warehouse & Inventory Manager", "Government Projects Sales"]/*TDEF*/,TKEY="aftersales-titles-v1",TL=null;
