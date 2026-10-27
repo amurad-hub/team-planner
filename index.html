@@ -2091,86 +2091,90 @@ addEventListener("keydown",e=>{if($("#guide").hidden)return;e.stopPropagation();
 
 /* ===== Excel – Full report (simple, professional) ===== */
 async function xlFull(){xlOK();
- const NAVY="FF1C1E3D",GREEN="FF2A7130",GREY="FF6B7686",HEAD="FFF2F4F7",LINE="FFE3E7EE",HL="FFC9D0DC",LINK="FF1F5FBF";
- const LT={e:"FFB45309",b:"FF2A7130",i:"FF1F5FBF",a:"FFC00000"},LF={e:"FFFCEFE3",b:"FFE7F3E8",i:"FFE6EEF9",a:"FFFBE5E5"};
+ const NAVY="FF1C1E3D",GREEN="FF2A7130",GREY="FF6B7686",HEAD="FFF2F4F7",LINE="FFE3E7EE",HL="FFC9D0DC",LINK="FF1F5FBF",BAND="FFF5F7FA";
+ const TIER=["FF1C1E3D","FF2A7130","FF1F5FBF","FFB45309","FF7D3C9C","FF946B00"];
  const ver=($(".fver")||{}).textContent||"",now=new Date(),
   dKSA=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Riyadh",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}).format(now).replace(",","");
  const wb=new ExcelJS.Workbook();wb.creator="Team Planner";wb.created=now;
  const link=(n,cell)=>"#'"+n.replace(/'/g,"''")+"'!"+(cell||"A1");
- const lvName=k=>k&&LV[k]?LV[k].n:"—",byId=id=>S.members.find(m=>m.id===id);
+ const byId=id=>S.members.find(m=>m.id===id);
  const tenure=h=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(h||"");if(!m)return"";const d=new Date(+m[1],+m[2]-1,+m[3]);let mo=(now.getFullYear()-d.getFullYear())*12+now.getMonth()-d.getMonth();if(now.getDate()<d.getDate())mo--;if(mo<0)return"Starts soon";const y=Math.floor(mo/12),r=mo%12;return (y?y+" yr"+(y>1?"s":""):"")+(y&&r?" ":"")+(r?r+" mo":"")||"New"};
- const topLv=m=>LVORD.find(k=>(m.a||[]).some(x=>x.lv===k))||"";
  const sheet=(name,land,cols)=>{const ws=wb.addWorksheet(name,{views:[{showGridLines:false}]});cols.forEach((w,i)=>ws.getColumn(i+1).width=w);
   ws.pageSetup={orientation:land?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.5,right:.5,top:.6,bottom:.6,header:.3,footer:.3}};
   ws.headerFooter={oddFooter:"&L&8&K6B7686"+(S.title||"Team Structure").replace(/&/g,"&&")+"&R&8&K6B7686Page &P of &N"};return ws};
- const title=(ws,t,sub,n)=>{const a=ws.getCell(1,1);a.value=t;a.font={bold:true,size:18,color:{argb:NAVY}};ws.getRow(1).height=30;a.alignment={vertical:"middle"};
-  const b=ws.getCell(2,1);b.value=sub;b.font={size:10,color:{argb:GREY}};for(let i=1;i<=n;i++)ws.getCell(2,i).border={bottom:{style:"medium",color:{argb:GREEN}}};ws.getRow(2).height=20};
+ const title=(ws,t,sub,n)=>{ws.mergeCells(1,1,1,n);const a=ws.getCell(1,1);a.value="  "+t;a.font={bold:true,size:18,color:{argb:"FFFFFFFF"}};a.alignment={vertical:"middle"};ws.getRow(1).height=32;
+  for(let i=1;i<=n;i++)ws.getCell(1,i).fill={type:"pattern",pattern:"solid",fgColor:{argb:NAVY}};
+  ws.mergeCells(2,1,2,n);const b=ws.getCell(2,1);b.value="  "+sub;b.font={size:10,italic:true,color:{argb:GREY}};b.alignment={vertical:"middle"};for(let i=1;i<=n;i++)ws.getCell(2,i).border={bottom:{style:"medium",color:{argb:GREEN}}};ws.getRow(2).height=20};
  const label=(ws,r,t)=>{const c=ws.getCell(r,1);c.value=t;c.font={bold:true,size:12,color:{argb:NAVY}};ws.getRow(r).height=22;c.alignment={vertical:"bottom"}};
  const head=(ws,r,vals,c0)=>{c0=c0||1;vals.forEach((v,i)=>{const c=ws.getCell(r,c0+i);c.value=v;c.font={bold:true,color:{argb:NAVY}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:HEAD}};c.border={bottom:{style:"thin",color:{argb:HL}}};c.alignment={vertical:"middle",wrapText:true}});ws.getRow(r).height=22};
- const cell=(ws,r,c,v,o)=>{const x=ws.getCell(r,c);x.value=v;x.border={bottom:{style:"hair",color:{argb:LINE}}};x.alignment=Object.assign({vertical:"top",wrapText:true},o&&o.al||{});if(o&&o.font)x.font=o.font;return x};
- const lvc=(ws,r,c,k)=>cell(ws,r,c,lvName(k),{font:k&&LT[k]?{bold:true,color:{argb:LT[k]}}:{color:{argb:GREY}}});
+ const cell=(ws,r,c,v,o)=>{const x=ws.getCell(r,c);x.value=v;x.border={bottom:{style:"hair",color:{argb:LINE}}};x.alignment=Object.assign({vertical:"top",wrapText:true},o&&o.al||{});if(o&&o.font)x.font=o.font;if(o&&o.fill)x.fill={type:"pattern",pattern:"solid",fgColor:{argb:o.fill}};return x};
  const lnk=(x,t,to)=>{x.value={text:t,hyperlink:to};x.font={color:{argb:LINK},underline:true}};
  /* data */
  const order=[];const walk=id=>{order.push(byId(id));kids(id).forEach(k=>walk(k.id))};roots().forEach(r=>walk(r.id));
- const mgrs=order.filter(m=>m.mgr),emps=order.filter(m=>!m.mgr);
- const lc={e:0,b:0,i:0,a:0,n:0};let asg=0;emps.forEach(m=>(m.a||[]).forEach(x=>{asg++;lc[LK.includes(x.lv)?x.lv:"n"]++}));
- const holders=r=>emps.filter(m=>(m.a||[]).some(x=>x.r===r.id)),uncovered=S.resp.filter(r=>!holders(r).length);
- const topK=LK.slice().sort((a,b)=>lc[b]-lc[a])[0],pct=v=>asg?Math.round(v*100/asg):0;
- const sent=[`The team has ${S.members.length} ${S.members.length===1?"person":"people"}: ${mgrs.length} manager${mgrs.length===1?"":"s"} and ${emps.length} team member${emps.length===1?"":"s"}.`,
-  `${S.resp.length} responsibilities are defined; ${S.resp.length-uncovered.length} are assigned`+(uncovered.length?` and ${uncovered.length} still need an owner.`:" – all of them have an owner."),
-  asg?`There are ${asg} assignments in total`+(LK.filter(k=>lc[k]===lc[topK]).length>1?", spread evenly across the four levels.":`, mostly at ${LV[topK].n} level (${pct(lc[topK])}%).`):"No responsibilities have been assigned yet.",
-  emps.length&&asg?`On average, each team member holds ${(asg/emps.length).toFixed(1)} responsibilities.`:""].filter(Boolean);
- const N1="Overview",N2="Team",N3="Responsibilities",N4="Skills Matrix",N5="Employee Card",N6="Data";
- /* card rows are computed first so the Team tab can link to them */
- const cardRow={};
- const wsO=sheet(N1,false,[30,16,16,16,16,16]),wsR=sheet(N3,true,[36,20,74,12]),wsC=sheet(N5,false,[26,16,22,52,4,6]),wsD=wb.addWorksheet(N6,{state:"hidden"});
- /* ---- 5. Employee Cards (built first to know row numbers) ---- */
- /* ---- 5. Employee Card: pick a person from a dropdown (data on a hidden sheet) ---- */
- {const nP=order.length,MAXR=Math.max(1,...order.map(m=>m.mgr?kids(m.id).length:(m.a||[]).length)),last=nP+1,S0=19;
-  const DH=["Name","Job title","Reports to","Role","Direct reports","Total team","Responsibilities","Highest level","Gender","Hiring date","With the company","Nationality","Languages","Email","Phone","Other details","Department","ID No."];
-  DH.forEach((h,i)=>wsD.getCell(1,i+1).value=h);for(let j=0;j<MAXR;j++){wsD.getCell(1,S0+j*3).value="Item "+(j+1);wsD.getCell(1,S0+j*3+1).value="Level / title "+(j+1);wsD.getCell(1,S0+j*3+2).value="Description "+(j+1)}
+ const mgrs=order.filter(m=>m.mgr),staff=order.filter(m=>!m.mgr);
+ const levelOf=id=>{let l=0,p=byId(id);while(p&&p.parent){l++;p=byId(p.parent)}return l};
+ const maxLevel=Math.max(0,...order.map(m=>levelOf(m.id)));
+ const byLevel={};order.forEach(m=>{const l=levelOf(m.id);byLevel[l]=(byLevel[l]||0)+1});
+ const spanMgrs=mgrs.filter(m=>kids(m.id).length>0);
+ const avgSpan=spanMgrs.length?spanMgrs.reduce((s,m)=>s+kids(m.id).length,0)/spanMgrs.length:0;
+ const deptGroups=dGroups(S.members,m=>m.dep,false),namedDepts=deptGroups.filter(g=>g.d).length;
+ const chainUp=id=>{const c=[];let p=byId(id).parent;while(p){const pm=byId(p);if(!pm)break;c.unshift(pm.name);p=pm.parent}return c.join(" › ")};
+ const deptHead=g=>{const ms=g.it.filter(x=>x.mgr).slice().sort((a,b)=>levelOf(a.id)-levelOf(b.id));return ms[0]?ms[0].name:"—"};
+ const top=roots()[0];
+ const sent=[`The organization has ${S.members.length} ${S.members.length===1?"person":"people"} across ${namedDepts} department${namedDepts===1?"":"s"}, structured across ${maxLevel+1} reporting level${maxLevel?"s":""}.`,
+  top?`It is led by ${top.name}${top.role?" ("+top.role+")":""}, with ${mgrs.length} manager${mgrs.length===1?"":"s"} overseeing ${staff.length} team member${staff.length===1?"":"s"}.`:"",
+  spanMgrs.length?`On average, each manager directly oversees ${avgSpan.toFixed(1)} ${avgSpan===1?"person":"people"}.`:""].filter(Boolean);
+ const N1="Overview",N2="Organization Chart",N3="Employee Card",N4="Data";
+ const wsO=sheet(N1,false,[26,18,34,18,16,16]),wsH=sheet(N2,true,[10,30,26,20,22,14]),wsC=sheet(N3,false,[26,16,22,52,4,6]),wsD=wb.addWorksheet(N4,{state:"hidden"});
+ /* ---- Employee Card (built first so row numbers exist for the Data sheet) ---- */
+ {const nP=order.length,MAXR=Math.max(1,...order.map(m=>kids(m.id).length)),last=nP+1,S0=18;
+  const DH=["Name","Job title","Reports to","Role","Direct reports","Total team size","Reporting line","Gender","Hiring date","With the company","Nationality","Languages","Email","Phone","Other details","Department","ID No."];
+  DH.forEach((h,i)=>wsD.getCell(1,i+1).value=h);for(let j=0;j<MAXR;j++){wsD.getCell(1,S0+j*2).value="Report "+(j+1)+" name";wsD.getCell(1,S0+j*2+1).value="Report "+(j+1)+" title"}
   order.forEach((m,i)=>{const r=i+2,inf=m.info||{},par=byId(m.parent);
-   [m.name,m.role||"",par?par.name:"",m.mgr?"Manager":"Team member",m.mgr?kids(m.id).length:"",m.mgr?desc(m.id).length:"",m.mgr?"":(m.a||[]).length,m.mgr?"":(topLv(m)?LV[topLv(m)].n:""),m.g==="f"?"Female":m.g==="m"?"Male":"",fmtD(inf.hire),tenure(inf.hire),inf.nat?natName(inf.nat):"",(inf.lang||[]).map(c=>(LANG.find(x=>x.c===c)||{n:c}).n).join(", "),inf.email||"",inf.phone||"",(inf.extra||[]).filter(e=>e.k||e.v).map(e=>(e.k?e.k+": ":"")+e.v).join("; "),m.dep||"",(inf.idn||"").trim()].forEach((v,c)=>wsD.getCell(r,c+1).value=v);
-   const items=m.mgr?kids(m.id).map(k=>[k.name,k.role||"",""]):(m.a||[]).slice().sort((x,y)=>LVORD.indexOf(x.lv||"z")-LVORD.indexOf(y.lv||"z")).map(x=>{const rr=Rr(x.r);return rr?[rr.name,x.lv?LV[x.lv].n:"—",rr.desc||""]:null}).filter(Boolean);
-   items.forEach((it,j)=>it.forEach((v,k)=>wsD.getCell(r,S0+j*3+k).value=v))});
+   [m.name,m.role||"",par?par.name:"—",m.mgr?"Manager":"Team member",kids(m.id).length,desc(m.id).length+1,chainUp(m.id)||"—",m.g==="f"?"Female":m.g==="m"?"Male":"",fmtD(inf.hire),tenure(inf.hire),inf.nat?natName(inf.nat):"",(inf.lang||[]).map(c=>(LANG.find(x=>x.c===c)||{n:c}).n).join(", "),inf.email||"",inf.phone||"",(inf.extra||[]).filter(e=>e.k||e.v).map(e=>(e.k?e.k+": ":"")+e.v).join("; "),m.dep||"",(inf.idn||"").trim()].forEach((v,c)=>wsD.getCell(r,c+1).value=v);
+   kids(m.id).forEach((k,j)=>{wsD.getCell(r,S0+j*2).value=k.name;wsD.getCell(r,S0+j*2+1).value=k.role||""})});
   const col=n=>{let t="";while(n>0){const q=(n-1)%26;t=String.fromCharCode(65+q)+t;n=Math.floor((n-1)/26)}return t};
   const V=(c,dash)=>{const rg="Data!$"+col(c)+"$2:$"+col(c)+"$"+last,ix="INDEX("+rg+",$F$4)";return dash?'IFERROR(IF('+ix+'="","—",'+ix+'),"—")':'IFERROR(IF('+ix+'="","",'+ix+'),"")'};
-  title(wsC,"Employee Card","Choose a person in the box below – the card updates automatically",4);
+  title(wsC,"Employee Card","Choose a person below — the card updates automatically",4);
   const lb=wsC.getCell(4,1);lb.value="Select person ▸";lb.font={bold:true,color:{argb:GREEN}};lb.alignment={vertical:"middle"};
   wsC.mergeCells(4,2,4,4);const sel=wsC.getCell(4,2);sel.value=order[0]?order[0].name:"";sel.font={bold:true,size:13,color:{argb:NAVY}};sel.alignment={vertical:"middle",indent:1};
   sel.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFF3F8F3"}};sel.border={top:{style:"thin",color:{argb:GREEN}},bottom:{style:"thin",color:{argb:GREEN}},left:{style:"thin",color:{argb:GREEN}},right:{style:"thin",color:{argb:GREEN}}};
   for(let c=3;c<=4;c++)wsC.getCell(4,c).border=sel.border;wsC.getRow(4).height=26;
   sel.dataValidation={type:"list",allowBlank:false,formulae:["Data!$A$2:$A$"+last],showErrorMessage:true,errorStyle:"stop",errorTitle:"Choose a person",error:"Please pick a name from the list."};
   const ix=wsC.getCell(4,6);ix.value={formula:"MATCH($B$4,Data!$A$2:$A$"+last+",0)"};wsC.getColumn(6).hidden=true;wsC.getColumn(5).width=4;
-  const nm=wsC.getCell(6,1);wsC.mergeCells(6,1,6,3);nm.value={formula:V(1)};nm.font={bold:true,size:16,color:{argb:NAVY}};wsC.getRow(6).height=26;
-  const rl=wsC.getCell(6,4);rl.value={formula:V(4)};rl.font={bold:true,size:9,color:{argb:GREEN}};rl.alignment={horizontal:"right",vertical:"middle"};
-  const jt=wsC.getCell(7,1);wsC.mergeCells(7,1,7,4);jt.value={formula:V(2)};jt.font={color:{argb:GREY}};for(let c=1;c<=4;c++)wsC.getCell(7,c).border={bottom:{style:"thin",color:{argb:GREEN}}};
-  let r=9;label(wsC,r,"Profile");r++;const PR0=r;
-  [["ID No.",18],["Department",17],["Reports to",3],["Direct reports",5],["Total team",6],["Responsibilities",7],["Highest level",8],["Gender",9],["Hiring date",10],["With the company",11],["Nationality",12],["Languages",13],["Email",14],["Phone",15],["Other details",16]].forEach(([k,c])=>{cell(wsC,r,1,k,{font:{color:{argb:GREY}}});wsC.mergeCells(r,2,r,4);cell(wsC,r,2,{formula:V(c,true)},{font:{color:{argb:NAVY}},al:{horizontal:"left"}});r++});
-  r++;const hr=wsC.getCell(r,1);hr.value={formula:'IF('+V(4)+'="Manager","Team","Responsibilities")'};hr.font={bold:true,size:12,color:{argb:NAVY}};wsC.getRow(r).height=22;r++;
-  head(wsC,r,["","",""]);wsC.mergeCells(r,3,r,4);wsC.getCell(r,1).value={formula:'IF('+V(4)+'="Manager","Name","Responsibility")'};wsC.getCell(r,2).value={formula:'IF('+V(4)+'="Manager","Job title","Level")'};wsC.getCell(r,3).value={formula:'IF('+V(4)+'="Manager","","Description")'};r++;
-  const r0=r,maxD=Math.max(0,...S.resp.map(x=>(x.desc||"").length)),hh=Math.max(18,Math.min(84,Math.ceil(maxD/88)*12+6));
-  for(let j=0;j<MAXR;j++){cell(wsC,r,1,{formula:V(S0+j*3)},{font:{bold:true,color:{argb:NAVY}}});cell(wsC,r,2,{formula:V(S0+j*3+1)},{font:{color:{argb:NAVY}}});wsC.mergeCells(r,3,r,4);cell(wsC,r,3,{formula:V(S0+j*3+2)},{font:{size:9,color:{argb:"FF3B4456"}}});wsC.getRow(r).height=hh;r++}
-  const ref="B"+r0+":B"+(r-1);wsC.addConditionalFormatting({ref,rules:LK.map((k,i)=>({type:"expression",priority:i+1,formulae:["$B"+r0+'="'+LV[k].n+'"'],style:{font:{bold:true,color:{argb:LT[k]}}}}))});
-  {const hr2=PR0+6;wsC.addConditionalFormatting({ref:"B"+hr2,rules:LK.map((k,i)=>({type:"expression",priority:i+1,formulae:['$B'+hr2+'="'+LV[k].n+'"'],style:{font:{bold:true,color:{argb:LT[k]}}}}))})}
-  wsC.pageSetup.printArea="A1:D"+(r-1);wsC.pageSetup.fitToHeight=1;
+  const nm=wsC.getCell(6,1);wsC.mergeCells(6,1,6,3);nm.value={formula:V(1)};nm.font={bold:true,size:17,color:{argb:NAVY}};wsC.getRow(6).height=28;
+  const rl=wsC.getCell(6,4);rl.value={formula:V(4)};rl.font={bold:true,size:9,color:{argb:"FFFFFFFF"}};rl.alignment={horizontal:"center",vertical:"middle"};rl.fill={type:"pattern",pattern:"solid",fgColor:{argb:GREEN}};
+  const jt=wsC.getCell(7,1);wsC.mergeCells(7,1,7,4);jt.value={formula:V(2)};jt.font={color:{argb:GREY},italic:true};for(let c=1;c<=4;c++)wsC.getCell(7,c).border={bottom:{style:"thin",color:{argb:GREEN}}};
+  let r=9;label(wsC,r,"Profile");r++;
+  [["ID No.",17],["Department",16],["Reports to",3],["Reporting line",7],["Direct reports",5],["Total team size",6],["Gender",8],["Hiring date",9],["With the company",10],["Nationality",11],["Languages",12],["Email",13],["Phone",14],["Other details",15]].forEach(([k,c],i)=>{const band=i%2?BAND:null;cell(wsC,r,1,k,{font:{color:{argb:GREY}},fill:band});wsC.mergeCells(r,2,r,4);cell(wsC,r,2,{formula:V(c,true)},{font:{color:{argb:NAVY}},al:{horizontal:"left"},fill:band});r++});
+  r++;label(wsC,r,"Direct reports");r++;
+  head(wsC,r,["Name","Job title"]);wsC.mergeCells(r,2,r,4);r++;
+  for(let j=0;j<MAXR;j++){const band=j%2?BAND:null;cell(wsC,r,1,{formula:V(S0+j*2)},{font:{bold:true,color:{argb:NAVY}},fill:band});wsC.mergeCells(r,2,r,4);cell(wsC,r,2,{formula:V(S0+j*2+1)},{font:{color:{argb:NAVY}},fill:band});r++}
+  const note=wsC.getCell(r,1);wsC.mergeCells(r,1,r,4);note.value={formula:'IF('+V(5)+'=0,"No direct reports — individual contributor.","")'};note.font={italic:true,size:9,color:{argb:GREY}};r++;
+  wsC.pageSetup.printArea="A1:D"+r;wsC.pageSetup.fitToHeight=1;
   const nt=wsC.getCell(r+1,1);nt.value="Tip: click the name box above and type part of a name to search (Microsoft 365), or open the list with the arrow.";nt.font={italic:true,size:9,color:{argb:GREY}};wsC.mergeCells(r+1,1,r+1,4)}
- /* ---- 1. Overview ---- */
- title(wsO,S.title||"Team Structure","Team report"+(S.prep?"  ·  Prepared by "+S.prep:"")+"  ·  "+dKSA+" (KSA)",6);
+ /* ---- Overview ---- */
+ title(wsO,S.title||"Team Structure","Afaqy JED Branch Structure - Generated "+dKSA+" (KSA)",6);
  let o=4;label(wsO,o,"Summary");o++;sent.forEach(t=>{wsO.mergeCells(o,1,o,6);const c=wsO.getCell(o,1);c.value="•  "+t;c.alignment={wrapText:true,vertical:"top"};c.font={color:{argb:NAVY}};wsO.getRow(o).height=Math.max(18,Math.ceil(t.length/95)*16);o++});
  o++;label(wsO,o,"Key numbers");o++;
- [["People",S.members.length],["Managers",mgrs.length],["Team members",emps.length],["Responsibilities",S.resp.length],["Assignments",asg]].forEach(([k,v])=>{cell(wsO,o,1,k,{font:{color:{argb:GREY}}});cell(wsO,o,2,v,{font:{bold:true,color:{argb:NAVY}},al:{horizontal:"left"}});o++});
- o++;label(wsO,o,"By department");o++;head(wsO,o,["Department","People","Responsibilities"]);o++;
- {const L=[...S.members.map(m=>({dep:m.dep,p:1})),...S.resp.map(x=>({dep:x.dep,p:0}))],row=(a,b,c,grey)=>{cell(wsO,o,1,a,{font:grey?{color:{argb:GREY}}:{bold:true,color:{argb:NAVY}}});cell(wsO,o,2,b,{al:{horizontal:"left"}});cell(wsO,o,3,c,{al:{horizontal:"left"}});o++};
-  dGroups(L,x=>x.dep,false).forEach(g=>{const np=g.it.filter(x=>x.p).length,nr=g.it.length-np;if(g.d)row(g.d,np,nr);else{if(np)row("No department",np,"—",true);if(nr)row("General (shared)","—",nr,true)}})}
- o++;label(wsO,o,"Skill level mix");o++;head(wsO,o,["Level","Assignments","Share"]);o++;
- LK.forEach(k=>{lvc(wsO,o,1,k);cell(wsO,o,2,lc[k],{al:{horizontal:"left"}});const s=cell(wsO,o,3,asg?lc[k]/asg:0,{al:{horizontal:"left"}});s.numFmt="0%";o++});
- if(lc.n){cell(wsO,o,1,"No level",{font:{color:{argb:GREY}}});cell(wsO,o,2,lc.n,{al:{horizontal:"left"}});const s=cell(wsO,o,3,lc.n/asg,{al:{horizontal:"left"}});s.numFmt="0%";o++}
- o++;label(wsO,o,"In this file");o++;[[N3,"What the team looks after"],[N5,"Pick a person from the list to see their card"]].forEach(([n,t])=>{lnk(cell(wsO,o,1,n),n,link(n));wsO.mergeCells(o,2,o,6);cell(wsO,o,2,t,{font:{color:{argb:GREY}}});o++});
- /* ---- 3. Responsibilities ---- */
- title(wsR,"Responsibilities",S.resp.length+" responsibilities",4);head(wsR,4,["Responsibility","Department","Description","People"]);
- S.resp.forEach((x,i)=>{const rr=5+i,h=holders(x).length;cell(wsR,rr,1,x.name,{font:{bold:true,color:{argb:NAVY}}});cell(wsR,rr,2,x.dep||"General",{font:{color:{argb:x.dep?NAVY:GREY}}});cell(wsR,rr,3,x.desc||"",{font:{size:10}});cell(wsR,rr,4,h,{al:{horizontal:"center"},font:h?{color:{argb:NAVY}}:{bold:true,color:{argb:"FFC00000"}}});wsR.getRow(rr).height=Math.max(18,Math.ceil((x.desc||"").length/88)*14+4)});
- wsR.views=[{state:"frozen",ySplit:4,showGridLines:false}];wsR.autoFilter={from:{row:4,column:1},to:{row:4+S.resp.length,column:4}};
+ [["People",S.members.length],["Managers",mgrs.length],["Team members",staff.length],["Departments",namedDepts],["Reporting levels",maxLevel+1],["Avg. span of control",spanMgrs.length?avgSpan.toFixed(1):"—"]].forEach(([k,v])=>{cell(wsO,o,1,k,{font:{color:{argb:GREY}}});cell(wsO,o,2,v,{font:{bold:true,color:{argb:NAVY}},al:{horizontal:"left"}});o++});
+ o++;label(wsO,o,"By department");o++;head(wsO,o,["Department","People","Department head"]);o++;
+ deptGroups.forEach((g,i)=>{const band=i%2?BAND:null,none=!g.d;cell(wsO,o,1,g.d||"No department",{font:none?{color:{argb:GREY}}:{bold:true,color:{argb:NAVY}},fill:band});cell(wsO,o,2,g.it.length,{al:{horizontal:"left"},fill:band});wsO.mergeCells(o,3,o,6);cell(wsO,o,3,none?"—":deptHead(g),{font:{color:{argb:GREEN}},fill:band});o++});
+ o++;label(wsO,o,"Reporting levels");o++;head(wsO,o,["Level","People"]);o++;
+ for(let l=0;l<=maxLevel;l++){cell(wsO,o,1,"Level "+(l+1)+(l===0?" (Top)":""),{font:{bold:true,color:{argb:TIER[l%TIER.length]}}});cell(wsO,o,2,byLevel[l]||0,{al:{horizontal:"left"}});o++}
+ o++;label(wsO,o,"In this file");o++;[[N2,"The full team, organized by reporting level"],[N3,"Pick a person from the list to see their profile"]].forEach(([n,t])=>{lnk(cell(wsO,o,1,n),n,link(n));wsO.mergeCells(o,2,o,6);cell(wsO,o,2,t,{font:{color:{argb:GREY}}});o++});
+ /* ---- Organization Chart ---- */
+ title(wsH,"Organization Chart",order.length+" people · "+(maxLevel+1)+" reporting levels",6);
+ head(wsH,4,["Level","Name","Job Title","Department","Reports To","Direct Reports"]);
+ order.forEach((m,i)=>{const rr=5+i,l=levelOf(m.id),band=i%2?BAND:null,par=byId(m.parent),nm=(l?"   ".repeat(l)+"└ ":"")+m.name;
+  cell(wsH,rr,1,"L"+(l+1),{font:{bold:true,color:{argb:TIER[l%TIER.length]}},al:{horizontal:"center"},fill:band});
+  cell(wsH,rr,2,nm,{font:m.mgr?{bold:true,color:{argb:NAVY}}:{color:{argb:NAVY}},fill:band});
+  cell(wsH,rr,3,m.role||"",{font:{color:{argb:GREY}},fill:band});
+  cell(wsH,rr,4,m.dep||"—",{fill:band});
+  cell(wsH,rr,5,par?par.name:"—",{font:{color:{argb:GREY}},fill:band});
+  cell(wsH,rr,6,kids(m.id).length,{al:{horizontal:"center"},fill:band});
+  wsH.getRow(rr).outlineLevel=l});
+ wsH.views=[{state:"frozen",ySplit:4,showGridLines:false}];wsH.autoFilter={from:{row:4,column:1},to:{row:4+order.length,column:6}};
  await xlSave(wb,"team-report.xlsx");return wb.worksheets.length}
 /* ===== zoom & pan view (draft) ===== */
 (function(){const vp=$("#vp"),st=$("#tree");let V={k:1,x:0,y:0},anim=false;const MIN=.2,MAX=2;
