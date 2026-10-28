@@ -2091,91 +2091,187 @@ addEventListener("keydown",e=>{if($("#guide").hidden)return;e.stopPropagation();
 
 /* ===== Excel – Full report (simple, professional) ===== */
 async function xlFull(){xlOK();
- const NAVY="FF1C1E3D",GREEN="FF2A7130",GREY="FF6B7686",HEAD="FFF2F4F7",LINE="FFE3E7EE",HL="FFC9D0DC",LINK="FF1F5FBF",BAND="FFF5F7FA";
- const TIER=["FF1C1E3D","FF2A7130","FF1F5FBF","FFB45309","FF7D3C9C","FF946B00"];
- const ver=($(".fver")||{}).textContent||"",now=new Date(),
-  dKSA=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Riyadh",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}).format(now).replace(",","");
+ /* ---------- look & feel ---------- */
+ const W="FFFFFFFF",NAVY="FF1C1E3D",GREEN="FF2A7130",INK="FF1B2433",GREY="FF6B7686",SOFT="FFF5F7FB",LINE="FFE3E7EE",SUBT="FFB8C2E0";
+ const PAL=["1F5FBF","2A7130","C2410C","7D3C9C","0E7C86","B45309","BE185D","475569","4D7C0F","1D4ED8"];
+ const F=a=>({type:"pattern",pattern:"solid",fgColor:{argb:a}});
+ const tint=(hex,a)=>{const n=parseInt(hex,16),f=x=>Math.round(x+(255-x)*(1-a)).toString(16).padStart(2,"0");return("FF"+f(n>>16&255)+f(n>>8&255)+f(n&255)).toUpperCase()};
+ const now=new Date(),dKSA=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Riyadh",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}).format(now).replace(",","");
  const wb=new ExcelJS.Workbook();wb.creator="Team Planner";wb.created=now;
- const link=(n,cell)=>"#'"+n.replace(/'/g,"''")+"'!"+(cell||"A1");
- const byId=id=>S.members.find(m=>m.id===id);
- const tenure=h=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(h||"");if(!m)return"";const d=new Date(+m[1],+m[2]-1,+m[3]);let mo=(now.getFullYear()-d.getFullYear())*12+now.getMonth()-d.getMonth();if(now.getDate()<d.getDate())mo--;if(mo<0)return"Starts soon";const y=Math.floor(mo/12),r=mo%12;return (y?y+" yr"+(y>1?"s":""):"")+(y&&r?" ":"")+(r?r+" mo":"")||"New"};
- const sheet=(name,land,cols)=>{const ws=wb.addWorksheet(name,{views:[{showGridLines:false}]});cols.forEach((w,i)=>ws.getColumn(i+1).width=w);
-  ws.pageSetup={orientation:land?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.5,right:.5,top:.6,bottom:.6,header:.3,footer:.3}};
+ const byId=id=>S.members.find(m=>m.id===id),plural=(n,w)=>n+" "+w+(n===1?"":"s");
+ const hireD=h=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(h||"");return m?new Date(+m[1],+m[2]-1,+m[3]):null};
+ const joined=h=>{const d=hireD(h);return d?d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):""};
+ const months=h=>{const d=hireD(h);if(!d)return null;let mo=(now.getFullYear()-d.getFullYear())*12+now.getMonth()-d.getMonth();if(now.getDate()<d.getDate())mo--;return mo};
+ const tenure=h=>{const mo=months(h);if(mo===null)return"";if(mo<0)return"Starts soon";const y=Math.floor(mo/12),r=mo%12;return y?y+" yr"+(y>1?"s":"")+(r?" "+r+" mo":""):(r?r+" mo":"New")};
+ const langs=inf=>(inf.lang||[]).map(c=>(LANG.find(x=>x.c===c)||{n:c}).n).join(", ");
+ /* ---------- structure: every team that reports straight to the branch leader is its own division ---------- */
+ const rs=roots(),root=rs.length===1?rs[0]:null,heads=root?kids(root.id).filter(k=>k.mgr||kids(k.id).length):rs,direct=root?kids(root.id).filter(k=>!heads.includes(k)):[];
+ const clean=r=>String(r||"").replace(/^head of\s+/i,"").replace(/\s+(manager|team leader|leader|director|supervisor|lead)$/i,"").trim();
+ const divs=heads.map((h,i)=>({h,col:PAL[i%PAL.length],name:clean(h.role)||h.name,mem:[]}));
+ {const cnt={};divs.forEach(d=>{const k=d.name.toLowerCase();cnt[k]=(cnt[k]||0)+1});divs.forEach(d=>{if(cnt[d.name.toLowerCase()]>1)d.name+=" – "+d.h.name})}
+ const divOf={},depth={};
+ divs.forEach(d=>{const go=(id,l)=>{const m=byId(id);divOf[id]=d;depth[id]=l;d.mem.push(m);kids(id).forEach(k=>go(k.id,l+1))};go(d.h.id,0)});
+ const MGMT={name:"Branch Management",col:"1C1E3D",mem:root?[root,...direct]:[]};direct.forEach(m=>depth[m.id]=1);
+ const order=[...MGMT.mem];divs.forEach(d=>order.push(...d.mem));const dv=m=>divOf[m.id]||MGMT;
+ const total=S.members.length,leaders=S.members.filter(m=>kids(m.id).length).length;
+ const nats=new Set(S.members.map(m=>(m.info||{}).nat).filter(Boolean)).size;
+ const teamTxt=m=>{const k=kids(m.id).length,t=desc(m.id).length;return k?k+" direct"+(t>k?" · "+t+" in all":""):""};
+ /* ---------- sheet helpers ---------- */
+ const sheet=(name,land,cols,tab)=>{const ws=wb.addWorksheet(name,{views:[{showGridLines:false}],properties:{tabColor:{argb:tab}}});cols.forEach((w,i)=>ws.getColumn(i+1).width=w);
+  ws.pageSetup={orientation:land?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3}};
   ws.headerFooter={oddFooter:"&L&8&K6B7686"+(S.title||"Team Structure").replace(/&/g,"&&")+"&R&8&K6B7686Page &P of &N"};return ws};
- const title=(ws,t,sub,n)=>{ws.mergeCells(1,1,1,n);const a=ws.getCell(1,1);a.value="  "+t;a.font={bold:true,size:18,color:{argb:"FFFFFFFF"}};a.alignment={vertical:"middle"};ws.getRow(1).height=32;
-  for(let i=1;i<=n;i++)ws.getCell(1,i).fill={type:"pattern",pattern:"solid",fgColor:{argb:NAVY}};
-  ws.mergeCells(2,1,2,n);const b=ws.getCell(2,1);b.value="  "+sub;b.font={size:10,italic:true,color:{argb:GREY}};b.alignment={vertical:"middle"};for(let i=1;i<=n;i++)ws.getCell(2,i).border={bottom:{style:"medium",color:{argb:GREEN}}};ws.getRow(2).height=20};
- const label=(ws,r,t)=>{const c=ws.getCell(r,1);c.value=t;c.font={bold:true,size:12,color:{argb:NAVY}};ws.getRow(r).height=22;c.alignment={vertical:"bottom"}};
- const head=(ws,r,vals,c0)=>{c0=c0||1;vals.forEach((v,i)=>{const c=ws.getCell(r,c0+i);c.value=v;c.font={bold:true,color:{argb:NAVY}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:HEAD}};c.border={bottom:{style:"thin",color:{argb:HL}}};c.alignment={vertical:"middle",wrapText:true}});ws.getRow(r).height=22};
- const cell=(ws,r,c,v,o)=>{const x=ws.getCell(r,c);x.value=v;x.border={bottom:{style:"hair",color:{argb:LINE}}};x.alignment=Object.assign({vertical:"top",wrapText:true},o&&o.al||{});if(o&&o.font)x.font=o.font;if(o&&o.fill)x.fill={type:"pattern",pattern:"solid",fgColor:{argb:o.fill}};return x};
- const lnk=(x,t,to)=>{x.value={text:t,hyperlink:to};x.font={color:{argb:LINK},underline:true}};
- /* data */
- const order=[];const walk=id=>{order.push(byId(id));kids(id).forEach(k=>walk(k.id))};roots().forEach(r=>walk(r.id));
- const mgrs=order.filter(m=>m.mgr),staff=order.filter(m=>!m.mgr);
- const levelOf=id=>{let l=0,p=byId(id);while(p&&p.parent){l++;p=byId(p.parent)}return l};
- const maxLevel=Math.max(0,...order.map(m=>levelOf(m.id)));
- const byLevel={};order.forEach(m=>{const l=levelOf(m.id);byLevel[l]=(byLevel[l]||0)+1});
- const spanMgrs=mgrs.filter(m=>kids(m.id).length>0);
- const avgSpan=spanMgrs.length?spanMgrs.reduce((s,m)=>s+kids(m.id).length,0)/spanMgrs.length:0;
- const deptGroups=dGroups(S.members,m=>m.dep,false),namedDepts=deptGroups.filter(g=>g.d).length;
- const chainUp=id=>{const c=[];let p=byId(id).parent;while(p){const pm=byId(p);if(!pm)break;c.unshift(pm.name);p=pm.parent}return c.join(" › ")};
- const deptHead=g=>{const ms=g.it.filter(x=>x.mgr).slice().sort((a,b)=>levelOf(a.id)-levelOf(b.id));return ms[0]?ms[0].name:"—"};
- const top=roots()[0];
- const sent=[`The organization has ${S.members.length} ${S.members.length===1?"person":"people"} across ${namedDepts} department${namedDepts===1?"":"s"}, structured across ${maxLevel+1} reporting level${maxLevel?"s":""}.`,
-  top?`It is led by ${top.name}${top.role?" ("+top.role+")":""}, with ${mgrs.length} manager${mgrs.length===1?"":"s"} overseeing ${staff.length} team member${staff.length===1?"":"s"}.`:"",
-  spanMgrs.length?`On average, each manager directly oversees ${avgSpan.toFixed(1)} ${avgSpan===1?"person":"people"}.`:""].filter(Boolean);
- const N1="Overview",N2="Organization Chart",N3="Employee Card",N4="Data";
- const wsO=sheet(N1,false,[26,18,34,18,16,16]),wsH=sheet(N2,true,[10,30,26,20,22,14]),wsC=sheet(N3,false,[26,16,22,52,4,6]),wsD=wb.addWorksheet(N4,{state:"hidden"});
- /* ---- Employee Card (built first so row numbers exist for the Data sheet) ---- */
- {const nP=order.length,MAXR=Math.max(1,...order.map(m=>kids(m.id).length)),last=nP+1,S0=18;
-  const DH=["Name","Job title","Reports to","Role","Direct reports","Total team size","Reporting line","Gender","Hiring date","With the company","Nationality","Languages","Email","Phone","Other details","Department","ID No."];
-  DH.forEach((h,i)=>wsD.getCell(1,i+1).value=h);for(let j=0;j<MAXR;j++){wsD.getCell(1,S0+j*2).value="Report "+(j+1)+" name";wsD.getCell(1,S0+j*2+1).value="Report "+(j+1)+" title"}
-  order.forEach((m,i)=>{const r=i+2,inf=m.info||{},par=byId(m.parent);
-   [m.name,m.role||"",par?par.name:"—",m.mgr?"Manager":"Team member",kids(m.id).length,desc(m.id).length+1,chainUp(m.id)||"—",m.g==="f"?"Female":m.g==="m"?"Male":"",fmtD(inf.hire),tenure(inf.hire),inf.nat?natName(inf.nat):"",(inf.lang||[]).map(c=>(LANG.find(x=>x.c===c)||{n:c}).n).join(", "),inf.email||"",inf.phone||"",(inf.extra||[]).filter(e=>e.k||e.v).map(e=>(e.k?e.k+": ":"")+e.v).join("; "),m.dep||"",(inf.idn||"").trim()].forEach((v,c)=>wsD.getCell(r,c+1).value=v);
+ const banner=(ws,t,sub,c2)=>{[1,2,3].forEach(r=>ws.mergeCells(r,1,r,c2));for(let c=1;c<=c2;c++){ws.getCell(1,c).fill=F(NAVY);ws.getCell(2,c).fill=F(NAVY);ws.getCell(3,c).fill=F(GREEN)}
+  const a=ws.getCell(1,1);a.value=t;a.font={size:24,bold:true,color:{argb:W}};a.alignment={vertical:"bottom",indent:1};
+  const b=ws.getCell(2,1);b.value=sub;b.font={size:11,color:{argb:SUBT}};b.alignment={vertical:"top",indent:1};
+  ws.getRow(1).height=42;ws.getRow(2).height=24;ws.getRow(3).height=5};
+ const put=(ws,r,c1,c2,v,font,o)=>{o=o||{};if(c2>c1)ws.mergeCells(r,c1,r,c2);for(let c=c1;c<=c2;c++){const x=ws.getCell(r,c);if(o.fill)x.fill=F(o.fill);if(o.border)x.border=o.border}
+  const x=ws.getCell(r,c1);x.value=v;if(font)x.font=font;x.alignment=Object.assign({vertical:"middle",wrapText:true},o.al||{});if(o.numFmt)x.numFmt=o.numFmt;if(o.lb)x.border=Object.assign({},x.border||{},{left:{style:"thick",color:{argb:o.lb}}});return x};
+ const heading=(ws,r,c1,c2,t)=>{put(ws,r,c1,c2,t,{size:13,bold:true,color:{argb:NAVY}},{border:{bottom:{style:"thin",color:{argb:GREEN}}},al:{vertical:"bottom"}});ws.getRow(r).height=24};
+ const lnk=(x,t,to)=>{x.value={text:t,hyperlink:"#'"+to.replace(/'/g,"''")+"'!A1"};x.font={bold:true,color:{argb:"FF1F5FBF"},underline:true}};
+ /* ---------- pictures (drawn on a canvas, placed in the sheet as images) ---------- */
+ const FONT='"Segoe UI",Calibri,Arial,sans-serif';
+ const pic=(w,h,draw)=>{try{const k=2,c=document.createElement("canvas");c.width=w*k;c.height=h*k;const g=c.getContext("2d");g.scale(k,k);g.fillStyle="#fff";g.fillRect(0,0,w,h);g.textBaseline="alphabetic";draw(g,w,h);return wb.addImage({base64:c.toDataURL("image/png"),extension:"png"})}catch(e){return null}};
+ const place=(ws,id,col,row,w,h)=>{if(id!==null)ws.addImage(id,{tl:{col,row},ext:{width:w,height:h},editAs:"oneCell"})};
+ const rr=(g,x,y,w,h,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()};
+ const fit=(g,t,mw)=>{t=String(t||"");if(g.measureText(t).width<=mw)return t;while(t.length>1&&g.measureText(t+"…").width>mw)t=t.slice(0,-1);return t+"…"};
+ const wrapT=(g,t,mw,n)=>{const out=[];let cur="";String(t||"").split(/\s+/).filter(Boolean).forEach(w=>{const tr=cur?cur+" "+w:w;if(g.measureText(tr).width<=mw)cur=tr;else{if(cur)out.push(cur);cur=w}});if(cur)out.push(cur);
+  if(out.length>n){const k=out.slice(0,n);k[n-1]=fit(g,out.slice(n-1).join(" "),mw);return k}return out.map(l=>fit(g,l,mw))};
+ const hx=c=>"#"+c,txt=(g,t,x,y,font,color,align)=>{g.font=font;g.fillStyle=color;g.textAlign=align||"left";g.fillText(t,x,y)};
+ const pill=(g,t,x,y,col,right)=>{g.font="600 11px "+FONT;const w=g.measureText(t).width+16,x0=right?x-w:x;g.fillStyle="#"+tint(col,.14).slice(2);rr(g,x0,y,w,20,10);g.fill();txt(g,t,x0+8,y+14,"600 11px "+FONT,hx(col))};
+ /* donut: how the branch is split */
+ const donut=()=>pic(420,300,(g,w,h)=>{const L=divs.map(d=>({n:d.name,v:d.mem.length,c:d.col})).filter(x=>x.v).sort((a,b)=>b.v-a.v);if(MGMT.mem.length)L.push({n:MGMT.name,v:MGMT.mem.length,c:MGMT.col});
+  const cx=102,cy=150,R=92,r=56,sum=L.reduce((s,x)=>s+x.v,0)||1;let a=-Math.PI/2;
+  L.forEach(x=>{const b=a+x.v/sum*Math.PI*2;g.beginPath();g.moveTo(cx,cy);g.arc(cx,cy,R,a,b);g.closePath();g.fillStyle=hx(x.c);g.fill();a=b});
+  g.lineWidth=2;g.strokeStyle="#fff";a=-Math.PI/2;L.forEach(x=>{g.beginPath();g.moveTo(cx,cy);g.lineTo(cx+R*Math.cos(a),cy+R*Math.sin(a));g.stroke();a+=x.v/sum*Math.PI*2});
+  g.beginPath();g.arc(cx,cy,r,0,Math.PI*2);g.fillStyle="#fff";g.fill();
+  txt(g,String(total),cx,cy+8,"700 30px "+FONT,"#1c1e3d","center");txt(g,"people",cx,cy+28,"12px "+FONT,"#6b7686","center");
+  const step=Math.min(28,260/L.length),y0=cy-step*L.length/2+step/2;
+  L.forEach((x,i)=>{const y=y0+i*step;g.fillStyle=hx(x.c);rr(g,212,y-6,12,12,3);g.fill();g.font="12px "+FONT;txt(g,fit(g,x.n,w-262),232,y+4,"12px "+FONT,"#1b2433");g.font="12px "+FONT;txt(g,String(x.v),w-8,y+4,"700 12px "+FONT,hx(x.c),"right")})});
+ /* columns: time with the company */
+ const tenureChart=()=>pic(420,300,(g,w,h)=>{const B=[["Under 1 year",0,12],["1 – 3 years",12,36],["3 – 5 years",36,60],["5 – 10 years",60,120],["10+ years",120,1e9]].map(b=>({n:b[0],v:S.members.filter(m=>{const mo=months((m.info||{}).hire);return mo!==null&&mo>=b[1]&&mo<b[2]}).length}));
+  const miss=S.members.filter(m=>months((m.info||{}).hire)===null).length;if(miss)B.push({n:"Not set",v:miss,grey:1});
+  const base=242,top=40,mx=Math.max(1,...B.map(b=>b.v)),bw=(w-40)/B.length;
+  g.strokeStyle="#e3e7ee";g.lineWidth=1;g.beginPath();g.moveTo(16,base+.5);g.lineTo(w-16,base+.5);g.stroke();
+  B.forEach((b,i)=>{const x=24+i*bw,bh=(base-top)*b.v/mx,c=b.grey?"#b9c2d0":"#2a7130";g.fillStyle=c;if(bh>0){rr(g,x+bw*.18,base-bh,bw*.64,bh,6);g.fill();g.fillRect(x+bw*.18,base-Math.min(bh,6),bw*.64,Math.min(bh,6))}
+   txt(g,String(b.v),x+bw/2,base-bh-8,"700 15px "+FONT,b.grey?"#6b7686":"#1c1e3d","center");
+   g.font="11.5px "+FONT;wrapT(g,b.n,bw-6,2).forEach((l,j)=>txt(g,l,x+bw/2,base+18+j*14,"11.5px "+FONT,"#6b7686","center"))})});
+ /* the org chart picture */
+ const orgChart=()=>{const CW=214,GAP=18,M=26,n=divs.length,RW=300,RH=82,DH=126,SH=58,SG=10;
+  const subs=divs.map(d=>d.mem.filter(m=>m!==d.h&&kids(m.id).length));
+  const stack=Math.max(0,...subs.map(s=>s.length?s.length*(SH+SG)+14:0));
+  const w=Math.max(RW+2*M+(direct.length?640:0),M*2+n*CW+Math.max(0,n-1)*GAP),busY=M+RH+26,dTop=busY+24,h=dTop+(n?DH:0)+stack+M+24;
+  const id=pic(w,h,(g)=>{const cx=w/2;g.lineWidth=2;g.strokeStyle="#c9d0dc";
+   /* leader */
+   const rx=cx-RW/2;const gr=g.createLinearGradient(rx,M,rx+RW,M+RH);gr.addColorStop(0,"#1c1e3d");gr.addColorStop(1,"#2b3a78");g.fillStyle=gr;rr(g,rx,M,RW,RH,14);g.fill();
+   g.fillStyle="#3fa14a";g.fillRect(rx+14,M+RH-4,RW-28,4);
+   const ld=root||{name:S.title||"Team",role:""};g.font="700 18px "+FONT;txt(g,fit(g,ld.name,RW-30),cx,M+32,"700 18px "+FONT,"#fff","center");g.font="12.5px "+FONT;txt(g,fit(g,ld.role,RW-30),cx,M+52,"12.5px "+FONT,"rgba(255,255,255,.8)","center");
+   txt(g,plural(total,"person").replace("persons","people"),cx,M+70,"600 11px "+FONT,"#9fdca7","center");
+   if(direct.length){g.font="12px "+FONT;txt(g,fit(g,"+ "+plural(direct.length,"person").replace("persons","people")+" report"+(direct.length===1?"s":"")+" directly to "+ld.name,w-(rx+RW+20)-M),rx+RW+18,M+RH/2+4,"12px "+FONT,"#6b7686")}
+   if(!n)return;
+   /* connectors */
+   const xs=divs.map((d,i)=>M+i*(CW+GAP)+(w-(M*2+n*CW+(n-1)*GAP))/2);
+   g.beginPath();g.moveTo(cx,M+RH);g.lineTo(cx,busY);g.moveTo(xs[0]+CW/2,busY);g.lineTo(xs[n-1]+CW/2,busY);xs.forEach(x=>{g.moveTo(x+CW/2,busY);g.lineTo(x+CW/2,dTop)});g.stroke();
+   divs.forEach((d,i)=>{const x=xs[i],c=hx(d.col);
+    g.save();g.shadowColor="rgba(20,28,56,.12)";g.shadowBlur=10;g.shadowOffsetY=3;g.fillStyle="#fff";rr(g,x,dTop,CW,DH,12);g.fill();g.restore();
+    g.strokeStyle="#"+tint(d.col,.35).slice(2);g.lineWidth=1;rr(g,x,dTop,CW,DH,12);g.stroke();
+    g.save();rr(g,x,dTop,CW,DH,12);g.clip();g.fillStyle=c;g.fillRect(x,dTop,CW,7);g.restore();
+    g.font="700 12px "+FONT;txt(g,fit(g,d.name.toUpperCase(),CW-24),x+12,dTop+27,"700 12px "+FONT,c);
+    g.font="700 15px "+FONT;txt(g,fit(g,d.h.name,CW-24),x+12,dTop+50,"700 15px "+FONT,"#1b2433");
+    g.font="12px "+FONT;wrapT(g,d.h.role,CW-24,2).forEach((l,j)=>txt(g,l,x+12,dTop+68+j*15,"12px "+FONT,"#6b7686"));
+    pill(g,plural(d.mem.length,"person").replace("persons","people"),x+12,dTop+96,d.col);
+    /* team leaders inside the division */
+    const L=subs[i];if(!L.length)return;const sx=x+14,y0=dTop+DH+14;
+    g.strokeStyle="#"+tint(d.col,.45).slice(2);g.lineWidth=2;g.beginPath();g.moveTo(sx,dTop+DH);g.lineTo(sx,y0+(L.length-1)*(SH+SG)+SH/2);g.stroke();
+    L.forEach((m,j)=>{const ind=Math.min(3,depth[m.id]-1)*12,bx=sx+14+ind,by=y0+j*(SH+SG),bw=x+CW-bx;
+     g.beginPath();g.moveTo(sx,by+SH/2);g.lineTo(bx,by+SH/2);g.stroke();
+     g.fillStyle="#"+tint(d.col,.08).slice(2);rr(g,bx,by,bw,SH,9);g.fill();g.fillStyle=c;rr(g,bx,by,4,SH,2);g.fill();
+     g.font="700 12.5px "+FONT;txt(g,fit(g,m.name,bw-60),bx+12,by+22,"700 12.5px "+FONT,"#1b2433");
+     g.font="11px "+FONT;txt(g,fit(g,m.role,bw-20),bx+12,by+40,"11px "+FONT,"#6b7686");
+     const tm=desc(m.id).length;txt(g,"+"+tm,x+CW-10,by+22,"700 11px "+FONT,c,"right")})});
+   txt(g,"Boxes under each division are team leaders; +N is the number of people in their team.",M,h-14,"11px "+FONT,"#6b7686")});
+  return{id,w,h}};
+ /* ---------- tab names ---------- */
+ const N1="Dashboard",N2="Org Chart",N3="Divisions",N4="Team Directory",N5="Employee Card",N6="Data";
+ /* ======================= 1. DASHBOARD ======================= */
+ {const ws=sheet(N1,false,[2.5,9,9,9,2.5,9,9,9,2.5,9,9,9,2.5,9,9,9,2.5],NAVY);
+  banner(ws,S.title||"Team Structure","Afaqy JED Branch Structure - Generated "+dKSA+" (KSA)",17);ws.getRow(4).height=14;
+  const T=[[2,4,total,"People","1F5FBF"],[6,8,divs.length,"Divisions","2A7130"],[10,12,leaders,"Team leaders","C2410C"],[14,16,nats,"Nationalities","7D3C9C"]];
+  T.forEach(([c1,c2,v,l,col])=>{put(ws,5,c1,c2,"",null,{fill:"FF"+col});put(ws,6,c1,c2,v,{size:30,bold:true,color:{argb:"FF"+col}},{fill:SOFT,al:{horizontal:"center"}});put(ws,7,c1,c2,l.toUpperCase(),{size:9.5,bold:true,color:{argb:GREY}},{fill:SOFT,al:{horizontal:"center",vertical:"top"}})});
+  ws.getRow(5).height=5;ws.getRow(6).height=44;ws.getRow(7).height=22;ws.getRow(8).height=14;
+  if(root){put(ws,9,2,16,"Branch leader:   "+root.name+(root.role?"   ·   "+root.role:""),{size:12,bold:true,color:{argb:NAVY}},{fill:tint("2A7130",.1),lb:GREEN,al:{indent:1}});ws.getRow(9).height=28}
+  ws.getRow(10).height=12;heading(ws,11,2,8,"How the branch is split");heading(ws,11,10,16,"Time with the company");
+  for(let r=12;r<=26;r++)ws.getRow(r).height=15;
+  place(ws,donut(),1,11.4,420,300);place(ws,tenureChart(),9,11.4,420,300);
+  let r=28;heading(ws,r,2,16,"Divisions at a glance");r++;
+  const hd={size:9.5,bold:true,color:{argb:GREY}},bl={bottom:{style:"thin",color:{argb:LINE}}};
+  put(ws,r,2,5,"DIVISION",hd,{border:bl});put(ws,r,6,9,"LED BY",hd,{border:bl});put(ws,r,10,12,"PEOPLE",hd,{border:bl,al:{horizontal:"center"}});put(ws,r,13,13,"",null,{border:bl});put(ws,r,14,16,"SHARE",hd,{border:bl,al:{horizontal:"center"}});ws.getRow(r).height=20;r++;
+  divs.forEach((d,i)=>{const z=i%2?SOFT:null,o={fill:z,border:bl};
+   put(ws,r,2,5,d.name,{size:11.5,bold:true,color:{argb:"FF"+d.col}},Object.assign({lb:"FF"+d.col,al:{indent:1}},o));
+   put(ws,r,6,9,d.h.name,{size:11,color:{argb:INK}},o);put(ws,r,10,12,d.mem.length,{size:12,bold:true,color:{argb:NAVY}},Object.assign({al:{horizontal:"center"}},o));
+   put(ws,r,13,13,"",null,o);put(ws,r,14,16,total?d.mem.length/total:0,{size:11,color:{argb:GREY}},Object.assign({al:{horizontal:"center"},numFmt:"0%"},o));ws.getRow(r).height=24;r++});
+  if(!divs.length){put(ws,r,2,16,"No divisions yet – everyone reports straight to the leader.",{size:11,italic:true,color:{argb:GREY}});r++}
+  r++;heading(ws,r,2,16,"What's inside");r++;
+  [[N2,"A picture of the whole structure"],[N3,"Every division with its people"],[N4,"Everyone in one simple list"],[N5,"Choose a name to see that person's profile"]].forEach(([n,t])=>{lnk(put(ws,r,2,5,"",null,{al:{indent:1}}),n,n);put(ws,r,6,16,t,{size:11,color:{argb:GREY}});ws.getRow(r).height=20;r++});
+  ws.pageSetup.printArea="A1:Q"+r}
+ /* ======================= 2. ORG CHART ======================= */
+ {const oc=orgChart(),nc=Math.max(10,Math.ceil((oc.w+30)/68)),ws=sheet(N2,true,Array(nc).fill(9),"FF2A7130");
+  banner(ws,"Org Chart",(root?(divs.length?root.name+" leads "+plural(divs.length,"division"):"Everyone reports directly to "+root.name):plural(divs.length,"team"))+" · "+total+" people in total",nc);
+  ws.getRow(4).height=10;place(ws,oc.id,0.2,4,oc.w,oc.h);
+  if(oc.id===null)put(ws,5,1,8,"The chart picture could not be drawn in this browser.",{italic:true,color:{argb:GREY}})}
+ /* ======================= 3. DIVISIONS ======================= */
+ {const ws=sheet(N3,false,[2.5,32,36,26,2.5],"FF1F5FBF");banner(ws,"Divisions",divs.length?plural(divs.length,"division")+", each led by someone who reports to "+(root?root.name:"the branch leader"):"No divisions yet – everyone reports directly to "+(root?root.name:"the leader"),5);
+  let r=5;const bl={bottom:{style:"hair",color:{argb:LINE}}};
+  const block=(name,col,lead,list)=>{put(ws,r,2,4,name,{size:14,bold:true,color:{argb:W}},{fill:"FF"+col,al:{indent:1}});ws.getRow(r).height=28;r++;
+   put(ws,r,2,4,lead,{size:10.5,color:{argb:"FF"+col}},{fill:tint(col,.12),al:{indent:1}});ws.getRow(r).height=20;r++;
+   const hd={size:9,bold:true,color:{argb:GREY}};[["NAME",2],["JOB TITLE",3],["REPORTS TO",4]].forEach(([t,c])=>put(ws,r,c,c,t,hd,{border:{bottom:{style:"thin",color:{argb:"FF"+col}}},al:c===2?{indent:1}:{}}));ws.getRow(r).height=18;r++;
+   list.forEach((m,i)=>{const z=i%2?SOFT:null,p=byId(m.parent),lead2=kids(m.id).length>0;
+    put(ws,r,2,2,m.name,{size:11,bold:lead2,color:{argb:INK}},{fill:z,border:bl,al:{indent:1+Math.min(4,(depth[m.id]||0))*2}});
+    put(ws,r,3,3,m.role||"",{size:10.5,color:{argb:GREY}},{fill:z,border:bl});put(ws,r,4,4,p?p.name:"—",{size:10.5,color:{argb:GREY}},{fill:z,border:bl});ws.getRow(r).height=20;r++});
+   r+=2};
+  if(root)block(MGMT.name,MGMT.col,direct.length?root.name+" and "+plural(direct.length,"person").replace("persons","people")+" reporting directly":"Leads the whole branch",MGMT.mem);
+  divs.forEach(d=>block(d.name,d.col,"Led by "+d.h.name+"   ·   "+plural(d.mem.length,"person").replace("persons","people"),d.mem));
+  ws.pageSetup.printArea="A1:E"+r}
+ /* ======================= 4. TEAM DIRECTORY ======================= */
+ {const ws=sheet(N4,true,[26,34,26,20,14,13,16,32,17],"FFC2410C");const H=["Name","Job title","Division","Reports to","Joined","With us","Nationality","Email","Phone"];
+  banner(ws,"Team Directory","Everyone in the branch – use the arrows in the header row to filter",H.length);ws.getRow(4).height=10;
+  H.forEach((t,i)=>put(ws,5,i+1,i+1,t,{size:10.5,bold:true,color:{argb:W}},{fill:NAVY,al:{indent:i?0:1}}));ws.getRow(5).height=26;
+  order.forEach((m,i)=>{const r=6+i,z=i%2?SOFT:null,inf=m.info||{},d=dv(m),p=byId(m.parent),bl={bottom:{style:"hair",color:{argb:LINE}}};
+   put(ws,r,1,1,m.name,{size:11,bold:true,color:{argb:INK}},{fill:z,border:bl,al:{indent:1}});put(ws,r,2,2,m.role||"",{size:10.5,color:{argb:INK}},{fill:z,border:bl});
+   put(ws,r,3,3,d.name,{size:10,bold:true,color:{argb:"FF"+d.col}},{fill:tint(d.col,.12),border:bl,al:{indent:1}});
+   [[4,p?p.name:"—"],[5,joined(inf.hire)],[6,tenure(inf.hire)],[7,inf.nat?natName(inf.nat):""],[8,inf.email||""],[9,inf.phone||""]].forEach(([c,v])=>put(ws,r,c,c,v,{size:10.5,color:{argb:GREY}},{fill:z,border:bl}));ws.getRow(r).height=21});
+  ws.views=[{state:"frozen",ySplit:5,showGridLines:false}];ws.autoFilter={from:{row:5,column:1},to:{row:5+order.length,column:H.length}}}
+ /* ======================= 5. EMPLOYEE CARD ======================= */
+ {const ws=sheet(N5,false,[2.5,24,24,24,24,2.5,4,6],"FF7D3C9C"),wsD=wb.addWorksheet(N6,{state:"hidden"});
+  const nP=order.length,last=nP+1,MAXR=Math.max(1,...order.map(m=>kids(m.id).length)),S0=16;
+  ["Name","Job title","Division","Reports to","Joined","With the company","Team size","People in team","Gender","Nationality","Languages","Email","Phone","Other details","ID No."].forEach((h,i)=>wsD.getCell(1,i+1).value=h);
+  order.forEach((m,i)=>{const r=i+2,inf=m.info||{},p=byId(m.parent);
+   [m.name,m.role||"",dv(m).name,p?p.name:"",joined(inf.hire),tenure(inf.hire),teamTxt(m),desc(m.id).length,m.g==="f"?"Female":m.g==="m"?"Male":"",inf.nat?natName(inf.nat):"",langs(inf),inf.email||"",inf.phone||"",(inf.extra||[]).filter(e=>e.k||e.v).map(e=>(e.k?e.k+": ":"")+e.v).join("; "),(inf.idn||"").trim()].forEach((v,c)=>wsD.getCell(r,c+1).value=v);
    kids(m.id).forEach((k,j)=>{wsD.getCell(r,S0+j*2).value=k.name;wsD.getCell(r,S0+j*2+1).value=k.role||""})});
   const col=n=>{let t="";while(n>0){const q=(n-1)%26;t=String.fromCharCode(65+q)+t;n=Math.floor((n-1)/26)}return t};
-  const V=(c,dash)=>{const rg="Data!$"+col(c)+"$2:$"+col(c)+"$"+last,ix="INDEX("+rg+",$F$4)";return dash?'IFERROR(IF('+ix+'="","—",'+ix+'),"—")':'IFERROR(IF('+ix+'="","",'+ix+'),"")'};
-  title(wsC,"Employee Card","Choose a person below — the card updates automatically",4);
-  const lb=wsC.getCell(4,1);lb.value="Select person ▸";lb.font={bold:true,color:{argb:GREEN}};lb.alignment={vertical:"middle"};
-  wsC.mergeCells(4,2,4,4);const sel=wsC.getCell(4,2);sel.value=order[0]?order[0].name:"";sel.font={bold:true,size:13,color:{argb:NAVY}};sel.alignment={vertical:"middle",indent:1};
-  sel.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFF3F8F3"}};sel.border={top:{style:"thin",color:{argb:GREEN}},bottom:{style:"thin",color:{argb:GREEN}},left:{style:"thin",color:{argb:GREEN}},right:{style:"thin",color:{argb:GREEN}}};
-  for(let c=3;c<=4;c++)wsC.getCell(4,c).border=sel.border;wsC.getRow(4).height=26;
+  const V=(c,dash)=>{const ix="INDEX(Data!$"+col(c)+"$2:$"+col(c)+"$"+last+",$H$5)";return dash?'IFERROR(IF('+ix+'="","—",'+ix+'),"—")':'IFERROR(IF('+ix+'="","",'+ix+'),"")'};
+  banner(ws,"Employee Card","Pick a name in the green box – the card fills in by itself",6);ws.getRow(4).height=14;
+  put(ws,5,2,2,"SELECT A PERSON  ▸",{size:10,bold:true,color:{argb:GREEN}});
+  const gb={style:"medium",color:{argb:GREEN}},sel=put(ws,5,3,5,order[0]?order[0].name:"",{size:13,bold:true,color:{argb:NAVY}},{fill:"FFEFF7F0",border:{top:gb,bottom:gb},al:{indent:1}});
+  ws.getCell(5,3).border={top:gb,bottom:gb,left:gb};ws.getCell(5,5).border={top:gb,bottom:gb,right:gb};ws.getRow(5).height=30;
   sel.dataValidation={type:"list",allowBlank:false,formulae:["Data!$A$2:$A$"+last],showErrorMessage:true,errorStyle:"stop",errorTitle:"Choose a person",error:"Please pick a name from the list."};
-  const ix=wsC.getCell(4,6);ix.value={formula:"MATCH($B$4,Data!$A$2:$A$"+last+",0)"};wsC.getColumn(6).hidden=true;wsC.getColumn(5).width=4;
-  const nm=wsC.getCell(6,1);wsC.mergeCells(6,1,6,3);nm.value={formula:V(1)};nm.font={bold:true,size:17,color:{argb:NAVY}};wsC.getRow(6).height=28;
-  const rl=wsC.getCell(6,4);rl.value={formula:V(4)};rl.font={bold:true,size:9,color:{argb:"FFFFFFFF"}};rl.alignment={horizontal:"center",vertical:"middle"};rl.fill={type:"pattern",pattern:"solid",fgColor:{argb:GREEN}};
-  const jt=wsC.getCell(7,1);wsC.mergeCells(7,1,7,4);jt.value={formula:V(2)};jt.font={color:{argb:GREY},italic:true};for(let c=1;c<=4;c++)wsC.getCell(7,c).border={bottom:{style:"thin",color:{argb:GREEN}}};
-  let r=9;label(wsC,r,"Profile");r++;
-  [["ID No.",17],["Department",16],["Reports to",3],["Reporting line",7],["Direct reports",5],["Total team size",6],["Gender",8],["Hiring date",9],["With the company",10],["Nationality",11],["Languages",12],["Email",13],["Phone",14],["Other details",15]].forEach(([k,c],i)=>{const band=i%2?BAND:null;cell(wsC,r,1,k,{font:{color:{argb:GREY}},fill:band});wsC.mergeCells(r,2,r,4);cell(wsC,r,2,{formula:V(c,true)},{font:{color:{argb:NAVY}},al:{horizontal:"left"},fill:band});r++});
-  r++;label(wsC,r,"Direct reports");r++;
-  head(wsC,r,["Name","Job title"]);wsC.mergeCells(r,2,r,4);r++;
-  for(let j=0;j<MAXR;j++){const band=j%2?BAND:null;cell(wsC,r,1,{formula:V(S0+j*2)},{font:{bold:true,color:{argb:NAVY}},fill:band});wsC.mergeCells(r,2,r,4);cell(wsC,r,2,{formula:V(S0+j*2+1)},{font:{color:{argb:NAVY}},fill:band});r++}
-  const note=wsC.getCell(r,1);wsC.mergeCells(r,1,r,4);note.value={formula:'IF('+V(5)+'=0,"No direct reports — individual contributor.","")'};note.font={italic:true,size:9,color:{argb:GREY}};r++;
-  wsC.pageSetup.printArea="A1:D"+r;wsC.pageSetup.fitToHeight=1;
-  const nt=wsC.getCell(r+1,1);nt.value="Tip: click the name box above and type part of a name to search (Microsoft 365), or open the list with the arrow.";nt.font={italic:true,size:9,color:{argb:GREY}};wsC.mergeCells(r+1,1,r+1,4)}
- /* ---- Overview ---- */
- title(wsO,S.title||"Team Structure","Afaqy JED Branch Structure - Generated "+dKSA+" (KSA)",6);
- let o=4;label(wsO,o,"Summary");o++;sent.forEach(t=>{wsO.mergeCells(o,1,o,6);const c=wsO.getCell(o,1);c.value="•  "+t;c.alignment={wrapText:true,vertical:"top"};c.font={color:{argb:NAVY}};wsO.getRow(o).height=Math.max(18,Math.ceil(t.length/95)*16);o++});
- o++;label(wsO,o,"Key numbers");o++;
- [["People",S.members.length],["Managers",mgrs.length],["Team members",staff.length],["Departments",namedDepts],["Reporting levels",maxLevel+1],["Avg. span of control",spanMgrs.length?avgSpan.toFixed(1):"—"]].forEach(([k,v])=>{cell(wsO,o,1,k,{font:{color:{argb:GREY}}});cell(wsO,o,2,v,{font:{bold:true,color:{argb:NAVY}},al:{horizontal:"left"}});o++});
- o++;label(wsO,o,"By department");o++;head(wsO,o,["Department","People","Department head"]);o++;
- deptGroups.forEach((g,i)=>{const band=i%2?BAND:null,none=!g.d;cell(wsO,o,1,g.d||"No department",{font:none?{color:{argb:GREY}}:{bold:true,color:{argb:NAVY}},fill:band});cell(wsO,o,2,g.it.length,{al:{horizontal:"left"},fill:band});wsO.mergeCells(o,3,o,6);cell(wsO,o,3,none?"—":deptHead(g),{font:{color:{argb:GREEN}},fill:band});o++});
- o++;label(wsO,o,"Reporting levels");o++;head(wsO,o,["Level","People"]);o++;
- for(let l=0;l<=maxLevel;l++){cell(wsO,o,1,"Level "+(l+1)+(l===0?" (Top)":""),{font:{bold:true,color:{argb:TIER[l%TIER.length]}}});cell(wsO,o,2,byLevel[l]||0,{al:{horizontal:"left"}});o++}
- o++;label(wsO,o,"In this file");o++;[[N2,"The full team, organized by reporting level"],[N3,"Pick a person from the list to see their profile"]].forEach(([n,t])=>{lnk(cell(wsO,o,1,n),n,link(n));wsO.mergeCells(o,2,o,6);cell(wsO,o,2,t,{font:{color:{argb:GREY}}});o++});
- /* ---- Organization Chart ---- */
- title(wsH,"Organization Chart",order.length+" people · "+(maxLevel+1)+" reporting levels",6);
- head(wsH,4,["Level","Name","Job Title","Department","Reports To","Direct Reports"]);
- order.forEach((m,i)=>{const rr=5+i,l=levelOf(m.id),band=i%2?BAND:null,par=byId(m.parent),nm=(l?"   ".repeat(l)+"└ ":"")+m.name;
-  cell(wsH,rr,1,"L"+(l+1),{font:{bold:true,color:{argb:TIER[l%TIER.length]}},al:{horizontal:"center"},fill:band});
-  cell(wsH,rr,2,nm,{font:m.mgr?{bold:true,color:{argb:NAVY}}:{color:{argb:NAVY}},fill:band});
-  cell(wsH,rr,3,m.role||"",{font:{color:{argb:GREY}},fill:band});
-  cell(wsH,rr,4,m.dep||"—",{fill:band});
-  cell(wsH,rr,5,par?par.name:"—",{font:{color:{argb:GREY}},fill:band});
-  cell(wsH,rr,6,kids(m.id).length,{al:{horizontal:"center"},fill:band});
-  wsH.getRow(rr).outlineLevel=l});
- wsH.views=[{state:"frozen",ySplit:4,showGridLines:false}];wsH.autoFilter={from:{row:4,column:1},to:{row:4+order.length,column:6}};
- await xlSave(wb,"team-report.xlsx");return wb.worksheets.length}
+  ws.getCell(5,8).value={formula:"MATCH($C$5,Data!$A$2:$A$"+last+",0)"};ws.getColumn(7).hidden=true;ws.getColumn(8).hidden=true;ws.getRow(6).height=16;
+  put(ws,7,2,5,{formula:V(1)},{size:24,bold:true,color:{argb:NAVY}});ws.getRow(7).height=38;
+  put(ws,8,2,5,{formula:V(2)},{size:13,color:{argb:GREY}});ws.getRow(8).height=22;
+  const chip=put(ws,9,2,2,{formula:V(3)},{size:10,bold:true,color:{argb:W}},{fill:NAVY,al:{horizontal:"center"}});ws.getRow(9).height=22;
+  ws.addConditionalFormatting({ref:"B9",rules:divs.map((d,i)=>({type:"expression",priority:i+1,formulae:['$B$9="'+d.name.replace(/"/g,'""')+'"'],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FF"+d.col},bgColor:{argb:"FF"+d.col}},font:{bold:true,color:{argb:W}}}}))});
+  ws.getRow(10).height=14;
+  [["REPORTS TO",4],["WITH THE COMPANY",6],["TEAM",7],["JOINED",5]].forEach(([l,c],i)=>{put(ws,11,2+i,2+i,l,{size:9,bold:true,color:{argb:GREY}},{fill:SOFT,border:{top:{style:"thick",color:{argb:"FF"+PAL[i]}}},al:{indent:1,vertical:"bottom"}});
+   put(ws,12,2+i,2+i,{formula:V(c,true)},{size:13,bold:true,color:{argb:NAVY}},{fill:SOFT,al:{indent:1,vertical:"top"}})});ws.getRow(11).height=24;ws.getRow(12).height=36;
+  let r=14;heading(ws,r,2,5,"Details");r++;
+  [["ID number",15],["Gender",9],["Nationality",10],["Languages",11],["Email",12],["Phone",13],["Other details",14]].forEach(([k,c],i)=>{const z=i%2?SOFT:null,bl={bottom:{style:"hair",color:{argb:LINE}}};
+   put(ws,r,2,2,k,{size:10.5,color:{argb:GREY}},{fill:z,border:bl,al:{indent:1}});put(ws,r,3,5,{formula:V(c,true)},{size:11,color:{argb:INK}},{fill:z,border:bl});ws.getRow(r).height=22;r++});
+  r++;heading(ws,r,2,5,"Their team");r++;
+  const hd={size:9,bold:true,color:{argb:GREY}},tb={bottom:{style:"thin",color:{argb:GREEN}}};put(ws,r,2,3,"NAME",hd,{border:tb,al:{indent:1}});put(ws,r,4,5,"JOB TITLE",hd,{border:tb});ws.getRow(r).height=18;r++;
+  for(let j=0;j<MAXR;j++){const z=null;put(ws,r,2,3,{formula:V(S0+j*2)},{size:11,bold:true,color:{argb:INK}},{fill:z,al:{indent:1}});put(ws,r,4,5,{formula:V(S0+j*2+1)},{size:10.5,color:{argb:GREY}},{fill:z});ws.getRow(r).height=20;r++}
+  put(ws,r,2,5,{formula:'IF('+V(7)+'="","Not leading a team.","")'},{size:10,italic:true,color:{argb:GREY}});r++;
+  ws.pageSetup.printArea="A1:F"+r;ws.pageSetup.fitToHeight=1;
+  put(ws,r+1,2,5,"Tip: click the green box and start typing a name (Microsoft 365), or open the list with its arrow.",{size:9,italic:true,color:{argb:GREY}})}
+ await xlSave(wb,"team-report.xlsx");return wb.worksheets.length-1}
 /* ===== zoom & pan view (draft) ===== */
 (function(){const vp=$("#vp"),st=$("#tree");let V={k:1,x:0,y:0},anim=false;const MIN=.2,MAX=2;
  let lodPrev=null;
