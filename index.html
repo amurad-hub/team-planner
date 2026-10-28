@@ -830,8 +830,9 @@ body::before{display:none!important}
 #vp.lod #tree .card .nm{font-size:16px}
 
 /* ===== v24.35: required ID No. (popup + add form) ===== */
-#hc .hreq input:placeholder-shown{border-color:#C00000;box-shadow:0 0 0 1px rgba(192,0,0,.25)}
-#hc .hreq input:placeholder-shown::placeholder{color:#C00000;opacity:.8}
+/* v24.41 chart cards: name and job title are display-only (every edit is made in the planner menu) */
+#tree .card .nm,#tree .card .rl{cursor:default;caret-color:transparent;-webkit-user-select:none;user-select:none}
+#tree .card .nm:hover,#tree .card .nm:focus,#tree .card .rl:hover,#tree .card .rl:focus,#tree .card.root .nm:hover,#tree .card.root .nm:focus,#tree .card.root .rl:hover,#tree .card.root .rl:focus{border-color:transparent!important;background:none!important;outline:none}
 .addemp #eid.bad{border-color:#C00000;box-shadow:0 0 0 2px rgba(192,0,0,.18)}
 .addemp #eid::placeholder{color:var(--mu)}
 /* ===== v24.34: rectangle cards in horizontal view, set-department tools, group icon ===== */
@@ -964,7 +965,7 @@ html.viewonly #ftr .zfind input{flex:0 1 220px}
 <div class="gdstage" id="gdstage" aria-live="polite"></div><div class="wzf gdf" id="gdf"></div></div></div>
 <div class="tour" id="tour" hidden><div class="tspot" id="tspot"></div><div class="tbub" id="tbub" role="dialog" aria-modal="true" aria-labelledby="tbt"></div></div>
 <footer class="ftr" id="ftr"><div class="fck" aria-label="Saudi Arabia time"><span class="fdot" aria-hidden="true"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span id="fdate"></span><span class="fsep" aria-hidden="true"></span><b id="ftime"></b><span class="ftz">KSA · GMT+3</span></div>
-<div class="fvr"><span class="fver">v24.40</span><span class="fpw">Powered by : <b>Ahmad Murad</b></span></div></footer>
+<div class="fvr"><span class="fver">v24.41</span><span class="fpw">Powered by : <b>Ahmad Murad</b></span></div></footer>
 <div id="toast" class="toast" hidden></div>
 <div id="msg" class="stat" style="padding:0 14px 12px"></div>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -1074,7 +1075,7 @@ function fitNames(){$("#tree").querySelectorAll(".card .nm").forEach(fitOneName)
 document.addEventListener("input",e=>{if(e.target.classList&&e.target.classList.contains("nm")&&e.target.closest("#tree"))fitOneName(e.target)});
 function card(m){const dp=m.dep||"";
  return `<div class="card ${m.mgr?"root":""} ${m.g?"g-"+m.g:""}" data-id="${m.id}"><div class="cctl">${kids(m.id).length?`<button class="colb" data-col="${m.id}" title="${S.col&&S.col[m.id]?"Show":"Hide"} team (${desc(m.id).length})" aria-expanded="${!(S.col&&S.col[m.id])}">${S.col&&S.col[m.id]?"+"+desc(m.id).length:"▾"}</button>`:""}<button class="info" data-act="info" data-pid="${m.id}" title="Employee information (hover or tap)">!</button></div>
- <div class="ctop"><input class="nm" data-pid="${m.id}" data-f="name" value="${esc(m.name)}" aria-label="Name" title="${esc(m.name)}"${VIEWONLY?" readonly":""}><input class="rl tpf" data-f="role" data-tp readonly${RO} value="${esc(m.role)}" placeholder="Job title" aria-label="Job title" title="${esc(m.role||"")}"></div><div class="cdep">${m.mgr?'<span class="mchip">Manager</span>':""}<span class="dpl${dp?"":" none"}" title="Department">${dp?esc(dp):"No department"}</span></div></div>`}
+ <div class="ctop"><input class="nm" data-pid="${m.id}" data-f="name" value="${esc(m.name)}" aria-label="Name" title="${esc(m.name)}" readonly tabindex="-1"><input class="rl" data-f="role" readonly tabindex="-1" value="${esc(m.role)}" placeholder="Job title" aria-label="Job title" title="${esc(m.role||"")}"></div><div class="cdep">${m.mgr?'<span class="mchip">Manager</span>':""}<span class="dpl${dp?"":" none"}" title="Department">${dp?esc(dp):"No department"}</span></div></div>`}
 function node(id){
  const m=S.members.find(x=>x.id===id),k=kids(id),cl=S.col&&S.col[id],stack=!S.orh&&S.cmp!==false&&k.length>4&&k.every(c=>!kids(c.id).length);
  return `<li${S.hl===id?' class="zhl"':""}>${card(m)}${k.length&&!cl?`<ul${stack?' class="vst"':""}>${k.map(c=>node(c.id)).join("")}</ul>`:""}</li>`}
@@ -1234,9 +1235,16 @@ const addEmp=()=>{if(VIEWONLY)return;let nm=$("#en").value.trim();const idn=$("#
  if(S.members.some(x=>x.name.toLowerCase()===nm.toLowerCase())){say("#emsg","“"+nm+"” is already in the team. Use the Manager box on that row to change the role.",true);return}
  const im=$("#emgr").checked,rl=$("#er").value.trim()||(im?"Manager":"Engineer");let pr=$("#ep").value||null;if(pr&&!S.members.some(x=>x.id===pr))pr=null;
  S.members.push({id:nid(),name:nm,role:rl,parent:pr,mgr:im,a:[],info:{idn,lang:[],extra:[]},g:"",dep:$("#edp").value||depOf(pr)});
- $("#en").value="";$("#eid").value="";$("#eid").classList.remove("bad");$("#er").value="";$("#edp").value="";$("#emgr").checked=false;say("#emsg","");S.ce=false;render();doneCollapse("Added "+nm+(im?" as a manager.":"."),0,"s3")};
+ $("#en").value="";$("#eid").value="";$("#eid").classList.remove("bad");$("#er").value="";$("#edp").value="";$("#emgr").checked=false;say("#emsg","");S.ce=false;render();if(hcOpen())fillHC();doneCollapse("Added "+nm+(im?" as a manager.":"."),0,"s3")};
 $("#ep").onchange=e=>{epSel=e.target.value};
 $("#eadd").onclick=addEmp;$("#en").onkeydown=$("#eid").onkeydown=e=>{if(e.key==="Enter")addEmp()};$("#eid").oninput=e=>{if(e.target.value.trim())e.target.classList.remove("bad")};
+function wipeUI(){
+ ["#en","#eid","#er","#edp","#newr","#newd","#newdp","#efind","#zq","#sdr","#sde"].forEach(q=>{const e=$(q);if(e){e.value="";e.classList.remove("bad")}});
+ ["#emgr","#sdteam"].forEach(q=>{const e=$(q);if(e)e.checked=false});
+ document.querySelectorAll("[data-asq],[data-sdq],.pq").forEach(e=>{e.value=""});
+ efq="";epSel=undefined;SDS={r:{},e:{}};
+ ["#emsg","#bmsg"].forEach(q=>{const e=$(q);if(e){e.textContent="";e.style.color=""}});
+ wSnap=null;const t=$("#toast");if(t)t.hidden=true;hideHC()}
 const pickRM=()=>({rs:S.resp.filter(r=>S.sel[r.id]),ms:S.members.filter(m=>S.esel[m.id]&&!m.mgr)});
 $("#bapply").onclick=()=>{if(VIEWONLY)return;const{rs,ms}=pickRM();if(!rs.length||!ms.length){say("#bmsg","Pick at least one responsibility and one employee first.",true);return}
  ms.forEach(m=>rs.forEach(r=>{const x=m.a.find(y=>y.r===r.id);if(x)x.lv=S.bl;else m.a.push({r:r.id,lv:S.bl})}));
@@ -1711,7 +1719,7 @@ async function rImport(file){const{ws,heads}=await xlRead(file),ci=heads["respon
  S.cr=false;render();return `Imported: ${add} added, ${upd} updated.`}
 const EMP=[["Employee Name",28],["ID No.",16],["Job Title",26],["Department",22],["Reports To",26],["Gender",10],["Hiring Date",14],["Nationality",24],["Email",30],["Phone",16],["Languages",28],["Other Fields",38],["Manager (Yes/No)",16]];
 /* v24.37: drop lists like the planner (job title, department, reports to, gender, nationality, languages, manager), date check for Hiring Date, hints on each column */
-async function eExport(tpl){xlOK();const wb=new ExcelJS.Workbook(),ws=xlSheet(wb,"Employees",EMP,[0]),RN=300;
+async function eExport(tpl){xlOK();const wb=new ExcelJS.Workbook(),ws=xlSheet(wb,"Employees",EMP,[0,1]),RN=300;
  ws.getColumn(2).numFmt="@";ws.getColumn(7).numFmt="dd/mm/yyyy";ws.getColumn(10).numFmt="@";
  const toD=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||"");return m?new Date(Date.UTC(+m[1],+m[2]-1,+m[3])):""};
  if(!tpl)S.members.forEach(m=>{const i=m.info||{},par=(S.members.find(x=>x.id===m.parent)||{}).name||"";
@@ -1734,7 +1742,7 @@ async function eExport(tpl){xlOK();const wb=new ExcelJS.Workbook(),ws=xlSheet(wb
   ws.getCell("K"+r).dataValidation=lst("Lists!$D$1:$D$"+LN.length,"Languages","Pick one, or type several separated by commas (Arabic, English).");
   ws.getCell("L"+r).dataValidation=hint("Other Fields","Written as Name: value; Name: value");
   ws.getCell("M"+r).dataValidation=lst('"Yes,No"',"Manager","Yes gives the person the manager role.",1)}
- xlInfo(wb,["How to use this template","Fill in one employee per row, starting from row 2. Click a cell to see a short hint; most columns have a drop list (arrow on the right of the cell).","Employee Name * is required. ID No. is required for new people. If a row misses them, nothing is imported.","Employees that already exist are UPDATED: matched by ID No., or by name when the ID is not known yet. Empty cells keep the current value, so you only need to fill in what changes.","Reports To: pick from the list – it shows everyone in the planner and the names typed in column A. Leave blank to report to the first manager. Manager (Yes/No): Yes gives the person the manager role.","Job Title and Department: choose from the list or type a new one (new ones are added to the planner's lists). Department blank = same as the person they report to.","Gender: Female or Male. Hiring Date: DD/MM/YYYY (only real dates are accepted; Google Sheets shows a calendar). Nationality: choose from the list.","Languages: choose one, or type several separated by commas, for example Arabic, English.","Other Fields: custom details written as Name: value; Name: value.","Photos are not part of the template.","Save the file as .xlsx and upload it with the Import button in the planner. You can undo an import straight after."]);
+ xlInfo(wb,["How to use this template","Fill in one employee per row, starting from row 2. Click a cell to see a short hint; most columns have a drop list (arrow on the right of the cell).","Employee Name * is required. ID No. * is required for new people. If a row misses them, nothing is imported.","Employees that already exist are UPDATED: matched by ID No., or by name when the ID is not known yet. Empty cells keep the current value, so you only need to fill in what changes.","Reports To: pick from the list – it shows everyone in the planner and the names typed in column A. Leave blank to report to the first manager. Manager (Yes/No): Yes gives the person the manager role.","Job Title and Department: choose from the list or type a new one (new ones are added to the planner's lists). Department blank = same as the person they report to.","Gender: Female or Male. Hiring Date: DD/MM/YYYY (only real dates are accepted; Google Sheets shows a calendar). Nationality: choose from the list.","Languages: choose one, or type several separated by commas, for example Arabic, English.","Other Fields: custom details written as Name: value; Name: value.","Photos are not part of the template.","Save the file as .xlsx and upload it with the Import button in the planner. You can undo an import straight after."]);
  const ls=wb.addWorksheet("Lists");NAT.forEach((e,i)=>{ls.getCell(i+1,1).value=e.n});DL.forEach((x,i)=>{ls.getCell(i+1,2).value=x});TL.forEach((x,i)=>{ls.getCell(i+1,3).value=x});LN.forEach((x,i)=>{ls.getCell(i+1,4).value=x});
  pNames.forEach((x,i)=>{ls.getCell(i+1,5).value=x});for(let r=2;r<=RN;r++)ls.getCell(nP+r-1,5).value={formula:'IF(Employees!$A$'+r+'="","",Employees!$A$'+r+')',result:""};ls.state="hidden";
  await xlSave(wb,tpl?"Employees-template.xlsx":"Employees.xlsx")}
@@ -2299,7 +2307,7 @@ async function xlFull(){xlOK();
  vp.addEventListener("wheel",e=>{if(e.target.closest(".zbar,.zres"))return;e.preventDefault();const dy=e.deltaMode===1?e.deltaY*16:e.deltaY;zoomAt(V.k*Math.exp(-dy*(e.ctrlKey?.01:.0018)),e.clientX,e.clientY)},{passive:false});
  /* drag to pan + two-finger pinch */
  const pts=new Map();let drag=null,pinch=null;
- const noPan=t=>t.closest(".zbar,input,select,textarea,button,a,.cmark,[contenteditable]");
+ const noPan=t=>t.closest(".zbar,input:not(.nm):not(.rl),select,textarea,button,a,.cmark,[contenteditable]");
  vp.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"&&e.button!==0)return;if(noPan(e.target)&&e.pointerType==="mouse")return;if(e.pointerType==="mouse")e.preventDefault();pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pts.size===1){if(noPan(e.target))return;drag={x:e.clientX,y:e.clientY,vx:V.x,vy:V.y};vp.setPointerCapture(e.pointerId);vp.classList.add("grab")}
   else if(pts.size===2){const [a,b]=[...pts.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),k:V.k};drag=null}});
@@ -2377,7 +2385,7 @@ async function xlFull(){xlOK();
  async function flush(){if(!S.planId||busy)return;clearTimeout(autoT);autoT=null;const c=cur(),pl={id:S.planId,name:c?c.name:uniq(S.title),updated:Date.now(),data:planOf()};try{await putOne(pl);const m=meta(pl),i=PL.findIndex(x=>x.id===pl.id);if(i>=0)PL[i]=m;else PL.unshift(m)}catch(e){}}
  window.plAuto=()=>{if(busy||!S.planId)return;clearTimeout(autoT);autoT=setTimeout(flush,700)};
  addEventListener("pagehide",()=>{if(autoT)flush()});document.addEventListener("visibilitychange",()=>{if(document.hidden&&autoT)flush()});
- function load(pl,fit){busy=true;PK.forEach(k=>S[k]=JSON.parse(JSON.stringify(pl.data[k]==null?(k==="resp"||k==="members"?[]:""):pl.data[k])));S.planId=pl.id;S.sel={};S.esel={};S.open={};S.col={};S.view=null;delete S.hl;S=norm(S);busy=false;render();if(fit!==false)requestAnimationFrame(()=>window.zFit&&zFit(true));paintBtn()}
+ function load(pl,fit){busy=true;PK.forEach(k=>S[k]=JSON.parse(JSON.stringify(pl.data[k]==null?(k==="resp"||k==="members"?[]:""):pl.data[k])));S.planId=pl.id;S.sel={};S.esel={};S.open={};S.col={};S.view=null;delete S.hl;S=norm(S);busy=false;wipeUI();render();if(fit!==false)requestAnimationFrame(()=>window.zFit&&zFit(true));paintBtn()}
  async function openPlan(id){if(id===S.planId){close();return}await flush();const pl=await getOne(id);if(!pl){toast("That plan could not be opened.",true);return}load(pl);toast("Opened “"+pl.name+"”.");close()}
  async function create(name,data){await flush();const pl={id:"p"+nid(),name:uniq(name),updated:Date.now(),data};await putOne(pl);PL.unshift(meta(pl));load(pl);return pl}
  /* menu */
@@ -2408,7 +2416,7 @@ async function xlFull(){xlOK();
  m.addEventListener("submit",async e=>{e.preventDefault();if(VIEWONLY)return;const v=$("#plname").value.trim();if(!v){$("#plname").focus();return}const md=mode;mode="";
   if(md==="rename"){const c=cur();const pl=await getOne(S.planId);if(pl){PL=PL.filter(x=>x.id!==pl.id);pl.name=uniq(v);pl.updated=Date.now();pl.data=planOf();await putOne(pl);PL.unshift(meta(pl))}paintBtn();paint();toast("Plan renamed.");return}
   if(md==="saveas"){await create(v,planOf());close();toast("Saved as “"+cur().name+"”.");return}
-  if(md==="new"){await create(v,{title:v,prep:S.prep||"",resp:XP?[]:DEF(),members:[fresh().members[0]]});close();toast("New plan “"+cur().name+"” created.");setTimeout(()=>window.wOpen&&wOpen("struct"),250)}});
+  if(md==="new"){await create(v,{title:v,prep:S.prep||"",resp:[],members:[{id:"mgr",name:"",role:"",parent:null,mgr:true,a:[],info:{},g:""}]});close();toast("New plan “"+cur().name+"” created.");setTimeout(()=>window.wOpen&&wOpen("struct"),250)}});
  m.addEventListener("click",async e=>{e.stopPropagation();const o=e.target.closest("[data-plo]");if(o){openPlan(o.dataset.plo);return}
   if(VIEWONLY)return;
   const rb=e.target.closest("[data-plr]");if(rb){const pl=await getOne(rb.dataset.plr);if(pl){delete pl.trashed;pl.name=uniq(pl.name);await putOne(pl);await refresh();paint();toast("“"+pl.name+"” restored.")}return}
